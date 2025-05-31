@@ -1,19 +1,19 @@
 /* File: assets/css/panel.css */
 @font-face {
-    font-family: 'Yekan'; /* Using the name you specified */
-    src: url('../font/Yekan.woff') format('woff');
-    font-weight: normal; /* Assuming this is regular weight */
+    font-family: 'Yekan'; /* نامی که در ادامه استفاده می‌کنید */
+    src: url('../font/Yekan.woff') format('woff'); /* مسیر فایل Yekan.woff شما */
+    font-weight: normal; /* تعریف وزن نرمال برای این فایل */
     font-style: normal;
     font-display: swap;
 }
-@font-face {
-    font-family: 'Yekan';
-    src: url('../font/Yekan-Bold.woff') format('woff'); /* Assuming you have a bold version */
-    font-weight: bold;
-    font-style: normal;
-    font-display: swap;
+/* حذف تعریف @font-face برای Yekan-Bold.woff */
+
+/* --- Global Styles & Variables --- */
+:root {
+    /* ... سایر متغیرها ... */
+    --rs-font-family: 'Yekan', 'Tahoma', sans-serif;
+    /* ... */
 }
-/* If you have other weights like Yekan-Heavy.woff, define them similarly */
 
 /* --- Global Styles & Variables --- */
 :root {
