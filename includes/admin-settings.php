@@ -9,25 +9,24 @@ if (!defined('ABSPATH')) {
  * Enqueue admin scripts and styles.
  */
 function readysms_enqueue_admin_assets($hook_suffix) {
-    // Only load assets on our plugin's admin pages
-    $plugin_pages = [
-        'toplevel_page_readysms-settings',
-        'ردی-اس‌ام‌اس_page_readysms-google-settings', // Slug can change based on menu title
-        'ردی-اس‌ام‌اس_page_readysms-sms-settings',
-        'ردی-اس‌ام‌اس_page_readysms-api-test',
+    $allowed_hooks = [
+        'toplevel_page_readysms-settings', // Main dashboard page
+        'readysms-settings_page_readysms-google-settings', // Google settings submenu
+        'readysms-settings_page_readysms-sms-settings',    // SMS settings submenu
+        'readysms-settings_page_readysms-api-test',        // API Test submenu
     ];
-    // A more robust way to get page hooks:
-    // After add_menu_page, the hook is returned. Store it and check against it.
-    // For now, let's assume the slugs above are correct or use a simpler check.
 
-    // A general check if the page hook belongs to readysms
-    if (strpos($hook_suffix, 'readysms-') === false && $hook_suffix !== 'toplevel_page_readysms-settings' ) {
-       // Alternative for non-english slugs, check query param 'page'
-        if (!isset($_GET['page']) || strpos($_GET['page'], 'readysms-') === false) {
+    // Check if the current page hook is one of our plugin's pages.
+    // If not, don't load the assets.
+    if (!in_array($hook_suffix, $allowed_hooks)) {
+        // Fallback check for page query param, though hook_suffix is more reliable.
+        // This helps if the menu title (and thus part of hook_suffix) changes due to translation.
+        $current_page_query = isset($_GET['page']) ? sanitize_text_field($_GET['page']) : '';
+        $allowed_page_slugs = ['readysms-settings', 'readysms-google-settings', 'readysms-sms-settings', 'readysms-api-test'];
+        if (!in_array($current_page_query, $allowed_page_slugs)) {
             return;
         }
     }
-
 
     wp_enqueue_style('readysms-admin-panel-style', READYSMS_URL . 'assets/css/panel.css', array(), READYSMS_VERSION);
     wp_enqueue_style('toastr-css', 'https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css', array(), '2.1.4');
@@ -47,7 +46,7 @@ function readysms_enqueue_admin_assets($hook_suffix) {
         'msg_fill_otp'            => __('لطفا کد OTP دریافتی را وارد کنید.', 'readysms'),
         'msg_fill_ref_id'         => __('لطفا شناسه مرجع را وارد کنید.', 'readysms'),
         'msg_fill_template_id'    => __('لطفا شناسه قالب را وارد کنید.', 'readysms'),
-        'msg_unexpected_error'    => __('یک خطای پیش‌بینی نشده رخ داد. کنسول را بررسی کنید.', 'readysms'),
+        'msg_unexpected_error'    => __('یک خطای پیش‌بینی نشده رخ داد. کنسول مرورگر و لاگ خطای PHP را بررسی کنید.', 'readysms'),
     ));
 }
 add_action('admin_enqueue_scripts', 'readysms_enqueue_admin_assets');
