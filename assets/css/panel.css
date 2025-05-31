@@ -1,0 +1,350 @@
+@font-face {
+    font-family: 'Yekan';
+    src: url('../font/Yekan.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+}
+
+h1 h2 h3{
+    font-family: 'Yekan', sans-serif;
+}
+.wrap {
+    font-family: yekan!important;
+}
+.wrap p{
+    font-family: yekan!important;
+}
+.rtl h1,.rtl h3{
+    font-family: yekan!important;
+}
+.dokme-container {
+    display: flex;
+    gap: 10px; /* فاصله بین دکمه‌ها */
+}
+
+.dokme {
+    padding: 5px;
+    background-color: #2271b1;
+    color: white;
+    width: 150px;
+    border-radius: 5px;
+    text-align: center;
+    transition: background-color 0.3s ease-in-out;
+}
+
+.dokme:hover {
+    background-color: green;
+}
+
+.dokme a {
+    color: white;
+    text-decoration: none;
+    display: block;
+}
+.box-sett-1 {
+    background-color:white;
+    border-radius:10px;
+    border: 1px solid #ccc;
+    padding:10px!important;
+    margin:10px;
+    width:300px;
+    text-align: center;
+}
+.help1 {
+    color:green;
+    font-size:15px!important;
+    margin-bottom:20px;
+}
+.help2 {
+    color:red;
+    font-size:15px!important;
+    margin-top:20px;
+}
+
+/* ریست کردن استایل‌های پیش‌فرض */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* استایل‌های کانتینر اصلی */
+.container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  padding: 10px;
+  margin-top:50px;
+}
+
+/* استایل‌های باکس‌ها */
+.box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 300px;
+  height: 250px;
+  background-color: #f1f1f1;
+  padding: 0px;
+  text-align: right;
+  border: 1px solid black;
+  border-radius: 5px;
+  overflow-y: auto;
+}
+
+.box a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.box img {
+  width: 70px;
+  height: 70px;
+  margin-left: 10px;
+}
+
+/* استایل‌های عناوین باکس‌ها */
+.box-title-1 {
+  width: 100%;
+  background-color: red;
+  padding-top: 20px;
+  padding-bottom: 20px;
+  margin-top: -10px;
+  color: white;
+  font-family: yekan;
+  text-align: center;
+}
+
+.box-title-2 {
+  width: 100%;
+  background-color: #0088cc;
+  padding-top: 20px;
+  padding-bottom: 20px;
+  margin-top: -10px;
+  color: white;
+  font-family: yekan;
+  text-align: center;
+}
+
+.box-title-3 {
+  width: 100%;
+  background-color: green;
+  padding-top: 20px;
+  padding-bottom: 20px;
+  margin-top: -10px;
+  color: white;
+  font-family: yekan;
+  text-align: center;
+}
+
+.box-title-4 {
+  width: 100%;
+  background-color: #1ec418;
+  padding-top: 20px;
+  padding-bottom: 20px;
+  margin-top: -10px;
+  color: white;
+  font-family: yekan;
+  text-align: center;
+}
+
+.box-title-5 {
+  width: 100%;
+  background-color: #9b0740;
+  padding-top: 20px;
+  padding-bottom: 20px;
+  margin-top: -10px;
+  color: white;
+  font-family: yekan;
+  text-align: center;
+}
+
+/* استایل‌های زیرمجموعه‌ها */
+.sub-box {
+  padding-right: 10px;
+}
+
+.sub-title-box {
+  font-size: 15px;
+  font-family: yekan;
+}
+
+/* استایل‌های متفرقه */
+.host-title {
+  font-family: yekan;
+  font-size: 15px;
+  margin-right: 10px;
+  font-weight: 800;
+}
+
+.review {
+  color: black !important;
+  font-weight: 900;
+}
+
+.copy-right {
+  margin-top: 25px;
+}
+
+a {
+  text-decoration: none !important;
+}
+
+/* استایل‌های اضافی */
+.text-field {
+  font-family: yekan;
+}
+
+.button1 {
+  font-family: yekan;
+  background-color: blue !important;
+}
+
+.button1:hover {
+  background-color: green !important;
+}
+
+.button2 {
+  font-family: yekan;
+  background-color: green !important;
+  padding: 0px 15px !important;
+}
+
+.button2:hover {
+  background-color: red !important;
+}
+
+.plugin-logo img {
+  border: 1px solid green;
+  border-radius: 10px;
+  background-color: transparent;
+}
+
+.image-container {
+  margin-top: 50px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  width: 100%;
+}
+
+.image-container img {
+  height: 250px;
+  border-radius: 10px;
+}
+
+.baners {
+  width: 80% !important;
+}
+
+.text-img {
+  font-family: yekan;
+  font-size: 20px;
+  text-align: center;
+  font-weight: 700;
+  color: green;
+}
+
+.title-dis {
+  font-family: yekan !important;
+  font-size: 25px;
+}
+
+.new-item {
+  margin-top: 10px;
+  width: 100%;
+  text-align: center;
+  background-color: #ddd;
+  padding: 5px;
+  border-radius: 3px;
+}
+
+#pw_pw_gateways_setup {
+  display:none;
+}
+
+.matn  {
+    text-align: left!important;
+    width:90%;
+    line-height: 30px;
+}
+
+.pattern-code-example {
+    background-color:#D6FCD9;
+    padding:20px;
+    display: inline-block; 
+    border-radius:10px;
+}
+
+.description {
+    margin-top:20px!important;
+}
+
+.copy-btn {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    padding: 5px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin: 10px 0;
+    word-spacing: 2px;
+}
+
+/* مدیا کوئری‌ها */
+@media (max-width: 1024px) {
+  .image-container {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .image-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .box {
+    width: 30%;
+  }
+}
+
+@media (max-width: 480px) {
+  .image-container {
+    grid-template-columns: 1fr;
+  }
+  .box {
+    width: 100%;
+  }
+}
+
+#wpfooter {
+    display:none!important;
+}
+.matn  {
+    text-align: left!important;
+    width:90%;
+    line-height: 30px;
+}
+.pattern-code-example {
+    background-color:#D6FCD9;
+    padding:20px;
+    display: inline-block; 
+    border-radius:10px;
+}
+
+.description {
+    margin-top:20px!important;
+}
+
+.copy-btn {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    padding: 5px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin: 10px 0;
+    word-spacing: 2px;
+}

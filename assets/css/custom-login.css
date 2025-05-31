@@ -1,0 +1,87 @@
+#readysms-form {
+    max-width: 400px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+#sms-login-form, #verify-otp-form {
+    margin-bottom: 20px;
+}
+
+input {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+}
+
+button {
+    display: inline-block;
+    background-color: #4285f4;
+    color: #fff;
+    padding: 10px 20px;
+    text-decoration: none;
+    border-radius: 5px;
+    font-size: 16px;
+    margin-top: 10px;
+}
+
+button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+button:hover {
+    background-color: #3367d6;
+}
+
+#resend-timer {
+    background-color: #ff9800;
+    color: #fff;
+}
+
+.google-login-button {
+    display: inline-block;
+    background-color: orange;
+    color: #fff;
+    padding: 10px 20px;
+    text-decoration: none;
+    border-radius: 5px;
+    font-size: 16px;
+    margin-top: 5px;
+    width: 100%;
+}
+
+.google-login-button:hover {
+    background-color: green;
+    color: white;
+}
+
+#phone-number {
+    border: 2px solid green;
+}
+
+#send-otp {
+    background-color: #4285f4;
+    margin-top: 10px;
+    color: white;
+    width: 100%;
+}
+
+#send-otp:hover {
+    background-color: red;
+}
+
+#otp-code {
+    border: 2px solid blue;
+}
+
+#verify-otp {
+    background-color: #4285f4;
+    margin-top: 10px;
+    color: white;
+    width: 100%;
+}
+
+#verify-otp:hover {
+    background-color: red;
+}
