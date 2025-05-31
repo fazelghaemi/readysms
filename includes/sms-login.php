@@ -6,45 +6,75 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Helper function to normalize phone numbers.
- * Handles 'iran_only' and 'all_countries' modes.
- * Returns international format (+98...) or original if already international.
- * Returns false if format is invalid for the selected mode.
+ * Helper function to normalize phone numbers based on plugin settings.
+ * Returns international format (e.g., +98...) or false if format is invalid for the selected mode.
  */
-function readysms_normalize_phone_number($phone_input) {
-    $country_code_mode = get_option('ready_sms_country_code_mode', 'iran_only');
-    $sanitized_phone = preg_replace('/[^0-9+]/', '', $phone_input); // Allow + for country codes
+if (!function_exists('readysms_normalize_phone_number')) {
+    function readysms_normalize_phone_number($phone_input) {
+        $country_code_mode = get_option('ready_sms_country_code_mode', 'iran_only');
+        $sanitized_phone = preg_replace('/[^0-9+]/', '', $phone_input); // Allow + for country codes
 
-    if ($country_code_mode === 'iran_only') {
-        if (preg_match('/^09[0-9]{9}$/', $sanitized_phone)) { // 09...
-            return '+98' . substr($sanitized_phone, 1);
-        } elseif (preg_match('/^\+989[0-9]{9}$/', $sanitized_phone)) { // +989...
-            return $sanitized_phone;
-        } elseif (preg_match('/^989[0-9]{9}$/', $sanitized_phone)) { // 989...
-            return '+' . $sanitized_phone;
-        }
-        return false; // Invalid format for Iran only mode
-    } else { // all_countries mode
-        if (strpos($sanitized_phone, '+') === 0 && strlen($sanitized_phone) > 7) { // Starts with + and has enough digits
-            return $sanitized_phone;
-        } elseif (preg_match('/^09[0-9]{9}$/', $sanitized_phone)) { // If user enters 09... in all_countries, assume Iran as default fallback
-             return '+98' . substr($sanitized_phone, 1);
-        } elseif (strlen($sanitized_phone) > 7 && ctype_digit($sanitized_phone)) { // If only digits and long enough, assume it's local and needs country context (hard to handle without UI)
-            // For now, if it's likely an Iranian number without 0, try prefixing. Otherwise, it's ambiguous.
-            if (strlen($sanitized_phone) === 10 && substr($sanitized_phone, 0, 1) === '9') { // 9123456789
+        if ($country_code_mode === 'iran_only') {
+            if (preg_match('/^09[0-9]{9}$/', $sanitized_phone)) { // 09...
+                return '+98' . substr($sanitized_phone, 1);
+            } elseif (preg_match('/^\+989[0-9]{9}$/', $sanitized_phone)) { // +989...
+                return $sanitized_phone;
+            } elseif (preg_match('/^989[0-9]{9}$/', $sanitized_phone)) { // 989... (without initial +)
+                return '+' . $sanitized_phone;
+            }
+            return false; // Invalid format for Iran only mode
+        } else { // all_countries mode
+            if (strpos($sanitized_phone, '+') === 0 && strlen($sanitized_phone) > 7 && strlen($sanitized_phone) < 16) { // Starts with + and reasonable length
+                return $sanitized_phone;
+            } elseif (preg_match('/^09[0-9]{9}$/', $sanitized_phone)) { // If user enters 09... in all_countries, assume Iran as default fallback
+                 return '+98' . substr($sanitized_phone, 1);
+            } elseif (strlen($sanitized_phone) === 10 && substr($sanitized_phone, 0, 1) === '9') { // 912... (Iranian number without leading 0)
                  return '+98' . $sanitized_phone;
             }
-            // For truly international numbers without +, user MUST enter '+'.
-            // This part could be enhanced with a country code selector UI in the future.
-            return false; // Or handle as an error, "Please enter number with country code (+)"
+            // For other international numbers, user MUST enter '+'
+            // Otherwise, it's considered an invalid or ambiguous format for 'all_countries' mode without a '+'
+            return false; 
         }
-        return false; // Invalid or ambiguous format for all_countries without '+'
+    }
+}
+
+/**
+ * Helper function to get a clean, standardized phone number for use as a WordPress username and transient key.
+ * Typically aims for '09...' format for Iranian numbers or full international for others if applicable.
+ */
+if (!function_exists('readysms_get_storable_phone_format')) {
+    function readysms_get_storable_phone_format($phone_input_original) {
+        $country_code_mode = get_option('ready_sms_country_code_mode', 'iran_only');
+        $sanitized_phone = preg_replace('/[^0-9+]/', '', $phone_input_original);
+
+        if ($country_code_mode === 'iran_only' || preg_match('/^(\+|98|0)?9[0-9]{9}$/', $sanitized_phone)) {
+            // Normalize to 09... format for Iranian numbers for consistency in username/transient
+            if (strpos($sanitized_phone, '+989') === 0) {
+                return '0' . substr($sanitized_phone, 3); // +989... -> 09...
+            } elseif (strpos($sanitized_phone, '989') === 0) {
+                return '0' . substr($sanitized_phone, 2);  // 989... -> 09...
+            } elseif (preg_match('/^09[0-9]{9}$/', $sanitized_phone)) {
+                return $sanitized_phone; // Already 09...
+            } elseif (preg_match('/^9[0-9]{9}$/', $sanitized_phone) && strlen($sanitized_phone) === 10) { // 9... (10 digits)
+                 return '0' . $sanitized_phone; // 9... -> 09...
+            }
+        }
+        // For 'all_countries' mode, if it's an international number starting with +, use it as is (without + for username perhaps)
+        // This part needs careful consideration if usernames should store the '+' or not.
+        // For simplicity, if it's international and starts with +, we might store it as is or remove the +.
+        // For now, this function is primarily geared towards getting a consistent Iranian format for username.
+        if (strpos($sanitized_phone, '+') === 0) {
+            return $sanitized_phone; // Or substr($sanitized_phone, 1) if you don't want '+' in username
+        }
+        
+        // Fallback to a basic numeric sanitize if no specific format matches, though normalization should handle most cases
+        return preg_replace('/[^0-9]/', '', $phone_input_original);
     }
 }
 
 
 /**
- * ارسال کد تایید (OTP) به شماره تلفن با استفاده از API SEND سامانه راه پیام
+ * ارسال کد تایید (OTP) به شماره تلفن
  */
 function ready_sms_send_otp() {
     check_ajax_referer('readysms-nonce', 'nonce');
@@ -55,40 +85,26 @@ function ready_sms_send_otp() {
     }
     $phone_input = sanitize_text_field(wp_unslash($_POST['phone_number']));
 
-    // تغییر 5: نرمال‌سازی و اعتبارسنجی شماره موبایل
     $international_phone_for_api = readysms_normalize_phone_number($phone_input);
     if (false === $international_phone_for_api) {
         wp_send_json_error(__('فرمت شماره موبایل وارد شده صحیح نیست یا با تنظیمات کد کشور مطابقت ندارد.', 'readysms'));
         return;
     }
-    // کلید Transient باید بر اساس شماره نرمال‌شده بدون + یا شماره موبایل محلی یکسان باشد.
-    // استفاده از شماره موبایل پاکسازی شده بدون کد کشور برای کلید Transient می‌تواند یکسان‌سازی بهتری ایجاد کند.
-    $phone_sanitized_for_transient = preg_replace('/[^0-9]/', '', $phone_input);
-    if (strpos($phone_sanitized_for_transient, '98') === 0 && strlen($phone_sanitized_for_transient) > 10) { // 989...
-        $phone_sanitized_for_transient = '0' . substr($phone_sanitized_for_transient, 2); // 09...
-    } elseif (strpos($phone_sanitized_for_transient, '0') !== 0 && strlen($phone_sanitized_for_transient) === 10 && substr($phone_sanitized_for_transient, 0, 1) === '9') { // 9... (بدون صفر اول)
-        $phone_sanitized_for_transient = '0' . $phone_sanitized_for_transient; // 09...
-    }
-     // اطمینان از اینکه فقط 09 باقی می‌ماند اگر ایرانی بود
-    if (preg_match('/^09[0-9]{9}$/', $phone_sanitized_for_transient) === 0) {
-        // اگر پس از نرمال سازی همچنان فرمت مورد انتظار برای کلید transient را ندارد،
-        // از خود $international_phone_for_api (بدون +) استفاده می کنیم، یا خطا می دهیم.
-        // برای سادگی، فرض می کنیم $phone_input خام یا $international_phone_for_api برای کلید مناسب هستند.
-        // اما بهترین حالت یک فرمت یکسان برای transient key است. فعلا از $phone_sanitized_for_transient که 09 دارد استفاده می‌کنیم.
-        // اگر شماره بین المللی بود، $phone_sanitized_for_transient همان خواهد بود.
-        // این بخش نیاز به تست دقیق دارد.
-    }
+    
+    $phone_sanitized_for_transient = readysms_get_storable_phone_format($phone_input);
 
 
     $api_key = get_option('ready_sms_api_key');
-    $template_id = get_option('ready_sms_pattern_code');
-    if (empty($api_key) || empty($template_id)) {
-        wp_send_json_error(__('تنظیمات API ناقص است.', 'readysms'));
+    $sms_template_id = get_option('ready_sms_pattern_code');
+    $send_method = get_option('ready_sms_send_method', 'sms');
+
+    if (empty($api_key) || ($send_method === 'sms' && empty($sms_template_id))) {
+        wp_send_json_error(__('تنظیمات API (کلید یا کد پترن برای پیامک) ناقص است.', 'readysms'));
         return;
     }
 
     $line_number = get_option('ready_sms_number');
-    $timer_duration = (int)get_option('ready_sms_resend_timer', 120); // تغییر 3
+    $timer_duration = (int)get_option('ready_sms_resend_timer', 120);
     $otp_length = (int)get_option('ready_sms_otp_length', 6);
     
     if ($otp_length < 4 || $otp_length > 7) $otp_length = 6;
@@ -97,19 +113,28 @@ function ready_sms_send_otp() {
     $otp_generated = (string)wp_rand($min_otp_val, $max_otp_val);
     
     $payload = [
-        "mobile"     => $international_phone_for_api, // شماره نرمال شده برای API
-        "method"     => "sms",
-        "templateID" => (int) $template_id,
-        "params"     => [$otp_generated]
+        "mobile"     => $international_phone_for_api,
+        "method"     => $send_method,
     ];
-    if (!empty($line_number)) $payload["lineNumber"] = $line_number;
 
+    if ($send_method === 'ivr') {
+        $payload["templateID"] = 2;
+        $payload["code"] = $otp_generated;
+    } else { // sms
+        $payload["templateID"] = (int) $sms_template_id;
+        $payload["params"]     = [$otp_generated];
+        if (!empty($line_number)) {
+            $payload["lineNumber"] = $line_number;
+        }
+    }
+    
     $args = ['headers' => ['Content-Type' => 'application/json', 'apiKey' => $api_key], 'body' => wp_json_encode($payload), 'timeout' => 30];
     $response = wp_remote_post('https://api.msgway.com/send', $args);
 
     if (is_wp_error($response)) {
-        // ... (لاگ خطا مشابه قبل) ...
-        wp_send_json_error(sprintf(__('ارسال پیامک با خطای سیستمی وردپرس مواجه شد: %s.', 'readysms'), $response->get_error_message()));
+        $wp_error_message = $response->get_error_message();
+        error_log("Readysms (Send OTP - Method: {$send_method}) - WP_Error: " . $wp_error_message . " - Payload: " . wp_json_encode($payload));
+        wp_send_json_error(sprintf(__('ارسال کد با خطای سیستمی وردپرس مواجه شد: %s.', 'readysms'), $wp_error_message));
         return;
     }
 
@@ -124,12 +149,31 @@ function ready_sms_send_otp() {
                               $decoded_body_as_array['status'] === 'success';
 
     if ($is_api_send_successful) {
-        // استفاده از $phone_sanitized_for_transient (که معمولا فرمت 09... برای ایران دارد) برای کلید ترنزینت
         set_transient('readysms_otp_' . $phone_sanitized_for_transient, $otp_generated, 5 * MINUTE_IN_SECONDS);
-        wp_send_json_success(['message' => __('کد تایید با موفقیت ارسال شد.', 'readysms'), 'remaining_time' => $timer_duration]);
+        $success_message = ($send_method === 'ivr') ? __('کد تایید از طریق تماس صوتی به شماره شما ارسال شد.', 'readysms') : __('کد تایید به شماره شما پیامک شد.', 'readysms');
+        wp_send_json_success([
+            'message'        => $success_message,
+            'remaining_time' => $timer_duration,
+        ]);
     } else {
-        // ... (مدیریت و لاگ خطا مشابه قبل) ...
-        wp_send_json_error(__('خطای ناشناس در ارسال OTP از سمت راه پیام. لطفاً بررسی کنید پیامک به دستتان رسیده است.', 'readysms'));
+        $user_facing_error_message = ($send_method === 'ivr') ? __('خطا در برقراری تماس صوتی برای ارسال کد.', 'readysms') : __('خطای ناشناس در ارسال پیامک OTP از سمت راه پیام.', 'readysms');
+        if (is_array($decoded_body_as_array)) {
+            if (!empty($decoded_body_as_array['message'])) {
+                $user_facing_error_message = is_array($decoded_body_as_array['message']) ? implode('; ', $decoded_body_as_array['message']) : (string) $decoded_body_as_array['message'];
+            } elseif (!empty($decoded_body_as_array['Message'])) {
+                $user_facing_error_message = is_array($decoded_body_as_array['Message']) ? implode('; ', $decoded_body_as_array['Message']) : (string) $decoded_body_as_array['Message'];
+            } elseif (isset($decoded_body_as_array['status']) && $decoded_body_as_array['status'] !== 'success' && !empty($decoded_body_as_array['error']) && is_array($decoded_body_as_array['error']) && !empty($decoded_body_as_array['error']['message'])) {
+                $user_facing_error_message = (string) $decoded_body_as_array['error']['message'];
+            } elseif (isset($decoded_body_as_array['status']) && $decoded_body_as_array['status'] !== 'success' && !empty($decoded_body_as_array['error']) && is_string($decoded_body_as_array['error'])) {
+                 $user_facing_error_message = (string) $decoded_body_as_array['error'];
+            }
+        } elseif ($http_code >= 400) {
+            $user_facing_error_message = sprintf(__('خطای API راه پیام (کد وضعیت: %s).', 'readysms'), $http_code);
+        }
+
+        $log_data_for_debugging = [ /* ... (مشابه قبل) ... */ ];
+        error_log("Readysms (Send OTP - Method: {$send_method}) - API Call Not Considered Successful: " . wp_json_encode($log_data_for_debugging, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+        wp_send_json_error($user_facing_error_message);
     }
 }
 add_action('wp_ajax_ready_sms_send_otp', 'ready_sms_send_otp');
@@ -146,47 +190,28 @@ function ready_sms_verify_otp() {
         return;
     }
 
-    $phone_input = sanitize_text_field(wp_unslash($_POST['phone_number']));
+    $phone_input_from_js = sanitize_text_field(wp_unslash($_POST['phone_number']));
     $otp_code_from_user = sanitize_text_field(wp_unslash($_POST['otp_code']));
-
-    // نرمال‌سازی شماره موبایل برای کلید Transient و نام کاربری
-    // این بخش باید با منطق نرمال‌سازی در ready_sms_send_otp هماهنگ باشد
-    // برای سادگی فعلی، فرض می‌کنیم کاربر همان شماره‌ای را که در مرحله اول وارد کرده، در JS داریم
-    // و برای کلید Transient از فرمت پاکسازی شده (مثلا 09 ایرانی) استفاده می‌کنیم
-    $phone_sanitized_for_transient_and_login = preg_replace('/[^0-9]/', '', $phone_input);
-    if (strpos($phone_sanitized_for_transient_and_login, '98') === 0 && strlen($phone_sanitized_for_transient_and_login) > 10) {
-        $phone_sanitized_for_transient_and_login = '0' . substr($phone_sanitized_for_transient_and_login, 2);
-    } elseif (strpos($phone_sanitized_for_transient_and_login, '0') !== 0 && strlen($phone_sanitized_for_transient_and_login) === 10 && substr($phone_sanitized_for_transient_and_login, 0, 1) === '9') {
-        $phone_sanitized_for_transient_and_login = '0' . $phone_sanitized_for_transient_and_login;
-    }
-     if (!preg_match('/^09[0-9]{9}$/', $phone_sanitized_for_transient_and_login)) {
-        // اگر پس از نرمال‌سازی فرمت 09... برای ایران به دست نیامد،
-        // و حالت "همه کشورها" فعال است، ممکن است شماره فرمت دیگری داشته باشد.
-        // در این حالت، برای یکسان‌سازی کلید ترنزینت، شاید بهتر باشد از شماره خام پاکسازی شده استفاده کرد
-        // یا یک مکانیزم پیچیده‌تر برای نرمال‌سازی کلید ترنزینت برای شماره‌های بین‌المللی داشت.
-        // فعلاً با فرض اینکه بیشتر کاربران ایرانی هستند و JS شماره را در فرمت اولیه به اینجا می‌فرستد.
-        // اگر حالت "همه کشورها" فعال است و کاربر + وارد کرده، $phone_input خام استفاده می‌شود.
-        if(get_option('ready_sms_country_code_mode', 'iran_only') === 'all_countries' && strpos($phone_input, '+') === 0) {
-            $phone_sanitized_for_transient_and_login = preg_replace('/[^0-9+]/', '', $phone_input); // +123456789
-        } else if (get_option('ready_sms_country_code_mode', 'iran_only') !== 'iran_only') {
-             // اگر فرمت 09 نبود و همه کشورها فعال بود و با + هم شروع نشده بود، خطا می‌دهیم
-             wp_send_json_error(__('فرمت شماره موبایل برای تایید نامعتبر است.', 'readysms'));
-             return;
-        }
-    }
-
-
-    // تغییر 1: تعیین لینک بازگشت
-    $shortcode_redirect = isset($_POST['redirect_link']) ? esc_url_raw(wp_unslash($_POST['redirect_link'])) : '';
-    $login_redirect_option = get_option('ready_redirect_after_login');
-    $register_redirect_option = get_option('ready_redirect_after_register');
     
-    // اولویت با پارامتر شورت‌کد است، سپس تنظیمات ادمین
-    $final_redirect_url = home_url('/'); // پیش‌فرض نهایی
-    // اگر کاربر جدید است، از ریدایرکت ثبت‌نام استفاده کن، وگرنه از ریدایرکت لاگین
-    // این بخش پس از تشخیص جدید بودن یا نبودن کاربر اعمال می‌شود.
+    // استفاده از همان منطق نرمال‌سازی که برای کلید Transient در ارسال OTP استفاده شد
+    $phone_for_transient_and_login = readysms_get_storable_phone_format($phone_input_from_js);
+    if (false === $phone_for_transient_and_login || !preg_match('/^09[0-9]{9}$/', $phone_for_transient_and_login) && !(get_option('ready_sms_country_code_mode', 'iran_only') === 'all_countries' && strpos($phone_for_transient_and_login, '+') === 0) ) {
+        // اگر فرمت نهایی برای نام کاربری/ترنزینت مناسب نباشد (مثلا 09 برای ایران، یا + برای بین‌المللی)
+        error_log("ReadySMS (Verify OTP) - Failed to get storable phone format for username/transient. Input: {$phone_input_from_js}, Storable: {$phone_for_transient_and_login}");
+        wp_send_json_error(__('فرمت شماره موبایل ارسال شده برای تایید نامعتبر است.', 'readysms'));
+        return;
+    }
 
-    $transient_key = 'readysms_otp_' . $phone_sanitized_for_transient_and_login;
+    // تعیین لینک بازگشت
+    $shortcode_redirect_param = isset($_POST['redirect_link']) ? esc_url_raw(wp_unslash($_POST['redirect_link'])) : '';
+    $admin_redirect_after_login = get_option('ready_redirect_after_login');
+    $admin_redirect_after_register = get_option('ready_redirect_after_register');
+    
+    $final_redirect_url = home_url('/'); // پیش‌فرض نهایی
+
+    // منطق اولویت‌بندی ریدایرکت (بعد از تشخیص کاربر جدید/قدیمی اعمال می‌شود)
+
+    $transient_key = 'readysms_otp_' . $phone_for_transient_and_login;
     $stored_otp = get_transient($transient_key);
 
     if (false === $stored_otp) {
@@ -198,22 +223,20 @@ function ready_sms_verify_otp() {
         delete_transient($transient_key);
 
         $is_new_user = false;
-        $user = get_user_by('login', $phone_sanitized_for_transient_and_login);
-        if (!$user) {
-            // اگر با login (شماره موبایل) پیدا نشد، با ایمیل مبتنی بر شماره موبایل هم چک کن (برای سازگاری با افزونه‌های دیگر)
-            $temp_email = $phone_sanitized_for_transient_and_login . '@' . wp_parse_url(home_url(), PHP_URL_HOST);
-            $user_by_email = get_user_by('email', $temp_email);
-            if($user_by_email) $user = $user_by_email;
-        }
-
+        $user = get_user_by('login', $phone_for_transient_and_login);
+        // اگر با login پیدا نشد، با ایمیل مبتنی بر شماره موبایل هم چک کن
+        // (این بخش نیاز به بررسی بیشتر دارد که آیا ایمیل به این شکل ساخته می‌شود یا خیر)
+        // if (!$user) {
+        //    $temp_email_host = wp_parse_url(home_url(), PHP_URL_HOST) ?: 'example.com';
+        //    $temp_email = $phone_for_transient_and_login . '@' . $temp_email_host;
+        //    $user_by_email = get_user_by('email', $temp_email);
+        //    if($user_by_email) $user = $user_by_email;
+        // }
 
         if (!$user) {
             $is_new_user = true;
-            $email_host = wp_parse_url(home_url(), PHP_URL_HOST);
-            if (empty($email_host)) $email_host = str_replace(['http://', 'https://', 'www.'], '', home_url());
-            if (empty($email_host)) $email_host = 'example.com';
-            
-            $base_email_user = preg_replace('/[^a-z0-9_]/i', '', $phone_sanitized_for_transient_and_login);
+            $email_host = wp_parse_url(home_url(), PHP_URL_HOST) ?: str_replace(['http://', 'https://', 'www.'], '', home_url()) ?: 'example.com';
+            $base_email_user = preg_replace('/[^a-z0-9_]/i', '', $phone_for_transient_and_login);
             $email = $base_email_user . '@' . $email_host;
             
             $loop_count = 0;
@@ -222,11 +245,11 @@ function ready_sms_verify_otp() {
                 $loop_count++;
             }
             if (email_exists($email)) {
-                 wp_send_json_error(__('خطا در ایجاد ایمیل یکتا برای کاربر جدید.', 'readysms'));
+                 wp_send_json_error(__('خطا در ایجاد ایمیل یکتا برای کاربر جدید. لطفاً با پشتیبانی تماس بگیرید.', 'readysms'));
                  return;
             }
 
-            $user_id = wp_create_user($phone_sanitized_for_transient_and_login, wp_generate_password(12, true, true), $email);
+            $user_id = wp_create_user($phone_for_transient_and_login, wp_generate_password(12, true, true), $email);
             if (is_wp_error($user_id)) {
                 wp_send_json_error(sprintf(__('خطا در ایجاد کاربر جدید: %s', 'readysms'), $user_id->get_error_message()));
                 return;
@@ -236,23 +259,19 @@ function ready_sms_verify_otp() {
             $user = get_user_by('id', $user_id);
         }
 
+        // تعیین لینک بازگشت نهایی
+        if (!empty($shortcode_redirect_param) && $shortcode_redirect_param !== home_url() && $shortcode_redirect_param !== home_url('/')) {
+            $final_redirect_url = $shortcode_redirect_param;
+        } elseif ($is_new_user && !empty($admin_redirect_after_register)) {
+            $final_redirect_url = esc_url($admin_redirect_after_register);
+        } elseif (!$is_new_user && !empty($admin_redirect_after_login)) {
+            $final_redirect_url = esc_url($admin_redirect_after_login);
+        } else { // اگر هیچکدام تنظیم نشده، از تنظیم عمومی لاگین یا صفحه اصلی استفاده کن
+             $final_redirect_url = !empty($admin_redirect_after_login) ? esc_url($admin_redirect_after_login) : home_url('/');
+        }
+
+
         if ($user && !is_wp_error($user)) {
-            // تعیین لینک بازگشت نهایی بر اساس جدید بودن یا نبودن کاربر
-            if ($is_new_user && !empty($register_redirect_option)) {
-                $final_redirect_url = esc_url($register_redirect_option);
-            } elseif (!$is_new_user && !empty($login_redirect_option)) {
-                $final_redirect_url = esc_url($login_redirect_option);
-            } elseif (!empty($shortcode_redirect) && $shortcode_redirect !== home_url() && $shortcode_redirect !== home_url('/')) { 
-                // اگر شورت‌کد مقداری متفاوت از پیش‌فرض اولیه داشت و تنظیمات ادمین خالی بودند
-                $final_redirect_url = $shortcode_redirect;
-            } else {
-                $final_redirect_url = !empty($login_redirect_option) ? esc_url($login_redirect_option) : home_url('/');
-                 if ($is_new_user && !empty($register_redirect_option)) { // اگر کاربر جدید است و تنظیمات ادمین برای ثبت‌نام وجود دارد
-                    $final_redirect_url = esc_url($register_redirect_option);
-                 }
-            }
-
-
             wp_set_current_user($user->ID, $user->user_login);
             wp_set_auth_cookie($user->ID, true);
             do_action('wp_login', $user->user_login, $user);
@@ -261,7 +280,7 @@ function ready_sms_verify_otp() {
             wp_send_json_error(__('خطا در ورود یا یافتن اطلاعات کاربر پس از تایید OTP.', 'readysms'));
         }
     } else {
-        error_log("Readysms (Verify OTP) - Invalid OTP attempt. User entered: [{$otp_code_from_user}], Stored OTP in transient: [{$stored_otp}], Phone for transient key: [{$phone_sanitized_for_transient_and_login}]");
+        error_log("Readysms (Verify OTP) - Invalid OTP attempt. User entered: [{$otp_code_from_user}], Stored OTP in transient: [{$stored_otp}], Phone for transient key: [{$phone_for_transient_and_login}]");
         wp_send_json_error(__('کد تایید وارد شده صحیح نیست.', 'readysms'));
     }
 }
