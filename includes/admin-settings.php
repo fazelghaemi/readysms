@@ -129,44 +129,82 @@ add_action('admin_notices', 'readysms_admin_notices');
  * Render the main dashboard page.
  */
 function readysms_render_dashboard_page() {
+    $msgway_affiliate_link = 'https://www.msgway.com/r/lr'; // لینک همکاری شما
     ?>
     <div class="wrap readysms-wrap">
-        <div style="text-align:center; margin-bottom:20px;">
+        <div style="text-align:center; margin-bottom:20px;" class="readysms-plugin-banner">
             <a href="https://readystudio.ir/readysms-plugin/" target="_blank">
-                <img src="<?php echo esc_url(READYSMS_URL . 'assets/banner.jpg'); ?>" style="max-width:100%; height:auto; border-radius:12px;" alt="<?php esc_attr_e('بنر ردی اس‌ام‌اس', 'readysms'); ?>">
+                <img src="<?php echo esc_url(READYSMS_URL . 'assets/banner.jpg'); ?>" alt="<?php esc_attr_e('بنر ردی اس‌ام‌اس', 'readysms'); ?>">
             </a>
         </div>
 
-        <h1><?php esc_html_e('داشبورد ردی اس‌ام‌اس', 'readysms'); ?></h1>
+        <h1>
+            <img src="<?php echo esc_url(READYSMS_URL . 'assets/readystudio-logo-square.png'); ?>" alt="<?php esc_attr_e('لوگوی ردی استودیو', 'readysms'); ?>" class="readysms-header-logo">
+            <?php esc_html_e('داشبورد ردی اس‌ام‌اس', 'readysms'); ?>
+        </h1>
         <p><?php esc_html_e('به پنل مدیریت افزونه ورود و ثبت نام با پیامک و گوگل خوش آمدید.', 'readysms'); ?></p>
 
         <div class="dokme-container" style="margin:20px 0;">
-            <a href="<?php echo esc_url(admin_url('admin.php?page=readysms-sms-settings')); ?>" class="dokme page-title-action"><?php esc_html_e('تنظیمات پیامک', 'readysms'); ?></a>
-            <a href="<?php echo esc_url(admin_url('admin.php?page=readysms-google-settings')); ?>" class="dokme page-title-action"><?php esc_html_e('تنظیمات گوگل', 'readysms'); ?></a>
-            <a href="<?php echo esc_url(admin_url('admin.php?page=readysms-api-test')); ?>" class="dokme page-title-action"><?php esc_html_e('تست API راه پیام', 'readysms'); ?></a>
+            <?php
+            // تعیین دکمه فعال بر اساس صفحه فعلی
+            $current_page = isset($_GET['page']) ? sanitize_text_field($_GET['page']) : '';
+            $is_dashboard_active = ($current_page === 'readysms-settings' || empty($current_page)); // Assuming main page slug is readysms-settings
+            $is_sms_settings_active = ($current_page === 'readysms-sms-settings');
+            $is_google_settings_active = ($current_page === 'readysms-google-settings');
+            $is_api_test_active = ($current_page === 'readysms-api-test');
+            ?>
+            <div class="dokme <?php echo $is_dashboard_active ? 'active' : ''; ?>">
+                 <a href="<?php echo esc_url(admin_url('admin.php?page=readysms-settings')); ?>"><?php esc_html_e('داشبورد', 'readysms'); ?></a>
+            </div>
+            <div class="dokme <?php echo $is_sms_settings_active ? 'active' : ''; ?>">
+                <a href="<?php echo esc_url(admin_url('admin.php?page=readysms-sms-settings')); ?>"><?php esc_html_e('تنظیمات پیامک', 'readysms'); ?></a>
+            </div>
+            <div class="dokme <?php echo $is_google_settings_active ? 'active' : ''; ?>">
+                <a href="<?php echo esc_url(admin_url('admin.php?page=readysms-google-settings')); ?>"><?php esc_html_e('تنظیمات گوگل', 'readysms'); ?></a>
+            </div>
+            <div class="dokme <?php echo $is_api_test_active ? 'active' : ''; ?>">
+                <a href="<?php echo esc_url(admin_url('admin.php?page=readysms-api-test')); ?>"><?php esc_html_e('تست API راه پیام', 'readysms'); ?></a>
+            </div>
         </div>
+        
+        <?php
+        // نمایش محتوای صفحه داشبورد بر اساس اینکه آیا صفحه اصلی هستیم یا یکی از زیرمنوها
+        // این بخش باید با ساختار منوهای شما هماهنگ شود.
+        // اگر این تابع فقط برای صفحه اصلی داشبورد است، محتوای راهنماها در ادامه می‌آید.
+        // اگر به عنوان callback برای add_menu_page استفاده شده، این محتوا نمایش داده می‌شود.
+        ?>
 
         <div class="postbox">
             <h2 class="hndle"><span><?php esc_html_e('راهنمای استفاده از پلاگین', 'readysms'); ?></span></h2>
             <div class="inside">
                 <p><?php esc_html_e('این پلاگین به شما امکان می‌دهد تا ورود کاربران به وب‌سایت خود را از طریق پیامک (با سامانه راه پیام) و همچنین ورود با گوگل مدیریت کنید.', 'readysms'); ?></p>
-                <ul style="list-style-type: disc; padding-right: 20px;">
-                    <li><?php printf(wp_kses_post(__('برای فعال‌سازی ورود با پیامک، به صفحه <a href="%s">تنظیمات پیامک</a> رفته و اطلاعات API سامانه راه پیام را وارد نمایید.', 'readysms')), esc_url(admin_url('admin.php?page=readysms-sms-settings'))); ?></li>
-                    <li><?php printf(wp_kses_post(__('برای فعال‌سازی ورود با گوگل، به صفحه <a href="%s">تنظیمات گوگل</a> رفته و شناسه‌های مربوطه را وارد کنید.', 'readysms')), esc_url(admin_url('admin.php?page=readysms-google-settings'))); ?></li>
-                    <li><?php printf(wp_kses_post(__('جهت استفاده از فرم ورود، شورت کد %s را در برگه یا نوشته دلخواه خود قرار دهید.', 'readysms')), '<code>[readysms_login_form]</code>'); ?></li>
-                    <li><?php printf(wp_kses_post(__('برای راهنمایی بیشتر و مشاهده مستندات کامل، به <a href="%s" target="_blank">وب‌سایت ردی استودیو</a> مراجعه کنید.', 'readysms')), esc_url('https://readystudio.ir/readysms-plugin/')); ?></li>
-                </ul>
+                {...}
             </div>
         </div>
          <div class="postbox">
             <h2 class="hndle"><span><?php esc_html_e('درباره سامانه راه پیام', 'readysms'); ?></span></h2>
             <div class="inside">
                 <p><?php esc_html_e('این افزونه برای ارسال پیامک از سرویس‌دهنده راه پیام (Msgway.com) استفاده می‌کند. راه پیام یک سامانه قدرتمند برای ارسال پیامک‌های اعتبارسنجی (OTP) و اطلاع‌رسانی است.', 'readysms'); ?></p>
-                <p><?php printf(wp_kses_post(__('برای استفاده از خدمات راه پیام و دریافت کلید API، به <a href="%s" target="_blank">وب‌سایت راه پیام</a> مراجعه کنید.', 'readysms')), esc_url('https://msgway.com/')); ?></p>
+                <p><?php printf(wp_kses_post(__('برای استفاده از خدمات راه پیام و دریافت کلید API، به <a href="%s" target="_blank">وب‌سایت راه پیام</a> مراجعه کنید.', 'readysms')), esc_url($msgway_affiliate_link)); // استفاده از لینک همکاری ?></p>
             </div>
         </div>
     </div>
     <?php
+}
+
+// در تابع readysms_admin_footer_text نیز می‌توانید از لوگوی کامل استفاده کنید:
+function readysms_admin_footer_text($footer_text) { // $footer_text را به عنوان پارامتر بگیرید
+    $current_screen = get_current_screen();
+    // ... (شرط بررسی صفحه) ...
+    if ($current_screen && (strpos($current_screen->id, 'readysms-') !== false || $current_screen->id === 'toplevel_page_readysms-settings')) {
+        $footer_text = '<span id="footer-thankyou" style="display:flex; align-items:center; justify-content: flex-start;">' . // RTL: flex-start is right
+             sprintf(
+                wp_kses_post( __( 'افزونه ردی اس‌ام‌اس، ارائه شده توسط %s', 'readysms' ) ),
+                '<a href="https://readystudio.ir/" target="_blank" style="display:inline-flex; align-items:center; margin-right:5px; font-weight:bold;"><img src="'.esc_url(READYSMS_URL . 'assets/readystudio-logo.svg').'" alt="ReadyStudio" style="height:20px; width:auto; margin-left:5px;">ردی استودیو</a>'
+             ) .
+             '</span>';
+    }
+    return $footer_text; // بازگرداندن متن فوتر
 }
 
 /**
