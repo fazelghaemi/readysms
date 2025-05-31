@@ -1,339 +1,492 @@
 /* File: assets/css/panel.css */
 @font-face {
-    font-family: 'Yekan';
-    /* Adjust path if assets/css/panel.css and assets/font/Yekan.woff are siblings in assets */
-    src: url('../font/Yekan.woff') format('woff'); 
-    font-weight: normal;
+    font-family: 'Yekan'; /* Using the name you specified */
+    src: url('../font/Yekan.woff') format('woff');
+    font-weight: normal; /* Assuming this is regular weight */
     font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Yekan';
+    src: url('../font/Yekan-Bold.woff') format('woff'); /* Assuming you have a bold version */
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+/* If you have other weights like Yekan-Heavy.woff, define them similarly */
+
+/* --- Global Styles & Variables --- */
+:root {
+    --rs-primary-color: #00635D; /* ReadyStudio Green */
+    --rs-primary-hover-color: #004A44; /* Darker Green for hover */
+    --rs-text-color: #010101; /* ReadyStudio Black */
+    --rs-secondary-text-color: #333333; /* Slightly lighter black for secondary text */
+    --rs-border-color: #D1D5DB; /* Light Gray for borders */
+    --rs-input-bg-color: #FFFFFF;
+    --rs-input-focus-border-color: var(--rs-primary-color);
+    --rs-card-bg-color: #FFFFFF;
+    --rs-page-bg-color: #F9FAFB; /* Very Light Gray for page background */
+    --rs-button-secondary-bg: #E5E7EB;
+    --rs-button-secondary-text: #1F2937;
+    --rs-button-secondary-hover-bg: #D1D5DB;
+    --rs-font-family: 'Yekan', 'Tahoma', sans-serif;
+    --rs-border-radius-md: 8px; /* Medium border radius */
+    --rs-border-radius-lg: 12px; /* Large border radius for cards */
+    --rs-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --rs-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+    --rs-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
 }
 
-.readysms-wrap h1, .readysms-wrap h2, .readysms-wrap h3, .readysms-wrap p, .readysms-wrap th, .readysms-wrap td, .readysms-wrap label, .readysms-wrap .button, .readysms-wrap .dokme a {
-    font-family: 'Yekan', sans-serif !important;
-}
 .readysms-wrap {
-    font-family: 'Yekan', sans-serif !important;
+    font-family: var(--rs-font-family) !important;
+    color: var(--rs-text-color);
+    background-color: var(--rs-page-bg-color);
+    margin-top: 0; /* WP adds its own margin, adjust if needed or manage via parent */
+    margin-left: -20px; /* Compensate for WP admin page structure */
+    padding: 25px 30px; /* More padding */
+    min-height: calc(100vh - 80px); /* Adjust based on WP header/footer height */
 }
 
-/*rtl*/
-.rtl .readysms-wrap h1, .rtl .readysms-wrap h3{
-    font-family: 'Yekan', sans-serif !important;
-}
-.dokme-container {
-    display: flex;
-    flex-wrap: wrap; /* Allow buttons to wrap on smaller screens */
-    gap: 10px; /* فاصله بین دکمه‌ها */
-}
-
-.dokme {
-    padding: 5px; /* Reduced padding for better fit */
-    background-color: #2271b1;
-    color: white !important; /* Ensure text color is white */
-    min-width: 150px; /* Use min-width for responsiveness */
-    border-radius: 5px;
-    text-align: center;
-    transition: background-color 0.3s ease-in-out;
+.readysms-wrap *,
+.readysms-wrap *::before,
+.readysms-wrap *::after {
     box-sizing: border-box;
 }
 
-.dokme:hover {
-    background-color: #1e639a; /* Slightly darker blue for hover */
+/* --- Typography --- */
+.readysms-wrap h1,
+.readysms-wrap h2,
+.readysms-wrap h3,
+.readysms-wrap h4 {
+    font-family: var(--rs-font-family) !important;
+    font-weight: bold; /* Use the bold version of Yekan */
+    color: var(--rs-text-color);
+    line-height: 1.3;
+    margin-bottom: 0.75em; /* Consistent bottom margin */
 }
 
-.dokme a {
-    color: white !important; /* Ensure text color is white */
-    text-decoration: none;
+.readysms-wrap h1 {
+    font-size: 26px; /* Slightly reduced for a cleaner look */
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--rs-border-color);
+    display: flex;
+    align-items: center;
+}
+.readysms-wrap h1 img.readysms-header-logo { /* For ReadyStudio Logo in H1 */
+    width: 36px; /* Adjust size as needed */
+    height: 36px;
+    margin-left: 12px; /* For RTL, logo on the right */
+    border-radius: 4px; /* Slight rounding if it's the square logo */
+}
+
+.readysms-wrap h2 { /* Used for Postbox titles (.hndle) */
+    font-size: 18px; /* Standard Postbox title size */
+    padding: 12px 18px;
+    margin: 0; /* WP Postbox hndle has its own margin handling */
+    line-height: 1.4;
+}
+.readysms-wrap .postbox .hndle { /* Specifically target postbox titles */
+     font-weight: bold; /* Ensure bold is applied */
+}
+
+.readysms-wrap h3 { /* For sub-sections or less prominent titles */
+    font-size: 20px;
+    font-weight: bold;
+    margin-top: 30px;
+    margin-bottom: 15px;
+    color: var(--rs-secondary-text-color);
+}
+.readysms-wrap p,
+.readysms-wrap th,
+.readysms-wrap td,
+.readysms-wrap label {
+    font-family: var(--rs-font-family) !important;
+    font-size: 14px;
+    line-height: 1.65; /* Increased for readability */
+    color: var(--rs-secondary-text-color);
+}
+.readysms-wrap .description {
+    font-size: 13px;
+    color: #6B7280; /* Softer gray for descriptions */
+    margin-top: 6px !important;
     display: block;
-    padding: 8px 12px; /* Add padding to the link itself */
-}
-.box-sett-1 {
-    background-color:white;
-    border-radius:10px;
-    border: 1px solid #ccc;
-    padding:10px!important;
-    margin:10px;
-    width:300px;
-    text-align: center;
-}
-.help1 {
-    color:green;
-    font-size:15px!important;
-    margin-bottom:20px;
-}
-.help2 {
-    color:red;
-    font-size:15px!important;
-    margin-top:20px;
+    line-height: 1.5;
 }
 
-/* General reset for plugin scope if needed, but usually WP admin handles this */
-/* .readysms-wrap * { margin: 0; padding: 0; box-sizing: border-box; } */
-
-/* استایل‌های کانتینر اصلی (مثال برای باکس‌های راهنما در داشبورد) */
-.readysms-wrap .info-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px; /* Increased gap */
-  justify-content: space-around; /* Better distribution */
-  padding: 10px 0; /* Vertical padding */
-  margin-top:20px;
-}
-
-/* استایل‌های باکس‌ها */
-.readysms-wrap .info-box { /* Prefixed with .readysms-wrap to scope */
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start; /* Align content to the start (right for RTL) */
-  flex-basis: 300px; /* Base width for flex items */
-  flex-grow: 1; /* Allow boxes to grow */
-  min-height: 200px; /* Min height */
-  background-color: #f9f9f9;
-  padding: 0px; /* Padding handled by inner elements or box-title */
-  text-align: right;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  overflow: hidden; /* For title background */
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
-
-.readysms-wrap .info-box a.box-link { /* Specific for links acting as boxes */
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  padding: 15px; /* Padding for link content */
-  box-sizing: border-box;
-}
-
-.readysms-wrap .info-box img.box-icon { /* Specific for icons in boxes */
-  width: 60px; /* Adjusted size */
-  height: 60px;
-  margin-left: 15px; /* Space on the left of icon (right for LTR) */
-}
-
-/* استایل‌های عناوین باکس‌ها */
-.readysms-wrap .box-title { /* Common style for titles */
-  width: 100%;
-  padding: 15px 20px; /* Adjusted padding */
-  color: white;
-  font-family: 'Yekan', sans-serif;
-  text-align: center;
-  font-size: 1.1em;
-  box-sizing: border-box;
-}
-
-.readysms-wrap .box-title-1 { background-color: #d9534f; } /* Red */
-.readysms-wrap .box-title-2 { background-color: #0088cc; } /* Blue */
-.readysms-wrap .box-title-3 { background-color: #5cb85c; } /* Green */
-.readysms-wrap .box-title-4 { background-color: #f0ad4e; } /* Orange */
-.readysms-wrap .box-title-5 { background-color: #9b0740; } /* Purple */
-
-
-.readysms-wrap .sub-box {
-  padding: 15px 20px; /* Padding for content below title */
-  font-size: 0.95em;
-  line-height: 1.6;
-}
-
-.readysms-wrap .sub-title-box {
-  font-size: 1em; /* Slightly larger */
-  font-family: 'Yekan', sans-serif;
-  font-weight: bold;
-  margin-bottom: 8px;
-}
-
-/* استایل‌های متفرقه */
-.readysms-wrap .host-title {
-  font-family: 'Yekan', sans-serif;
-  font-size: 1.1em; /* Adjusted */
-  margin-right: 10px;
-  font-weight: 800;
-}
-
-.readysms-wrap .review {
-  color: black !important;
-  font-weight: 900;
-}
-
-.readysms-wrap .copy-right { /* Assuming this is for footer */
-  margin-top: 25px;
-  text-align: center;
-  font-size: 0.9em;
-  color: #777;
-}
-
-.readysms-wrap a { /* General link styling within wrap */
-  text-decoration: none !important;
-  color: #0073aa; /* WP default link color */
+/* --- Links & Buttons --- */
+.readysms-wrap a {
+    color: var(--rs-primary-color);
+    text-decoration: none !important;
+    transition: color 0.2s ease-in-out, opacity 0.2s ease-in-out;
 }
 .readysms-wrap a:hover {
-  color: #00a0d2; /* WP default link hover */
+    color: var(--rs-primary-hover-color);
+    opacity: 0.85;
 }
 
-/* استایل‌های اضافی */
-.readysms-wrap .text-field { /* For general text inputs if needed */
-  font-family: 'Yekan', sans-serif;
-}
-
-
-.readysms-wrap .plugin-logo img {
-  border: 1px solid #5cb85c; /* Green border */
-  border-radius: 10px;
-  background-color: transparent;
-  padding: 5px; /* Padding around logo */
-}
-
-.readysms-wrap .image-container {
-  margin-top: 30px; /* Adjusted margin */
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Responsive grid */
-  gap: 15px; /* Adjusted gap */
-  width: 100%;
-}
-
-.readysms-wrap .image-container img {
-  width: 100%; /* Make images responsive */
-  height: auto; /* Maintain aspect ratio */
-  max-height: 200px; /* Max height for consistency */
-  border-radius: 10px;
-  object-fit: cover; /* Ensure images cover the area nicely */
-}
-
-
-.readysms-wrap .text-img {
-  font-family: 'Yekan', sans-serif;
-  font-size: 1.2em; /* Adjusted size */
-  text-align: center;
-  font-weight: 700;
-  color: #5cb85c; /* Green */
-  margin-top: 10px;
-}
-
-.readysms-wrap .title-dis {
-  font-family: 'Yekan', sans-serif !important;
-  font-size: 1.5em; /* Adjusted size */
-  margin-bottom: 15px;
-}
-
-.readysms-wrap .new-item {
-  margin-top: 10px;
-  width: 100%;
-  text-align: center;
-  background-color: #e9e9e9; /* Lighter gray */
-  padding: 8px 10px; /* Adjusted padding */
-  border-radius: 4px;
-  font-size: 0.9em;
-}
-
-/* This ID seems specific, ensure it's used within .readysms-wrap if plugin-scoped */
-#pw_pw_gateways_setup { 
-  display:none;
-}
-
-.readysms-wrap .matn  { /* For LTR text within RTL page */
-    text-align: left!important;
-    width:90%;
-    line-height: 1.7; /* Increased line height */
-    direction: ltr;
-    background-color: #f0f0f0;
-    padding: 10px;
-    border-radius: 4px;
-    border-right: 3px solid #0073aa;
-    font-family: monospace, 'Courier New', Courier; /* Monospace for code-like text */
-}
-
-.readysms-wrap .pattern-code-example {
-    background-color:#e6ffe8; /* Lighter green */
-    padding:10px 15px; /* Adjusted padding */
-    display: inline-block; 
-    border-radius:4px;
-    border: 1px solid #c3e6cb;
-    font-family: monospace, 'Courier New', Courier;
-    direction: rtl;
-    margin-top: 5px;
-}
-
-.readysms-wrap .description { /* For form table descriptions */
-    margin-top:5px!important; /* Reduced margin */
-    font-size: 0.9em;
-    color: #555;
-}
-
-.readysms-wrap .copy-btn {
-    background: #5cb85c; /* Green */
-    color: white;
-    border: none;
-    padding: 8px 15px; /* Adjusted padding */
-    border-radius: 4px;
+.readysms-wrap .button,
+.readysms-wrap input[type="submit"] {
+    font-family: var(--rs-font-family) !important;
+    font-weight: bold; /* Use bold Yekan */
+    padding: 10px 22px; /* Slightly more padding */
+    border-radius: var(--rs-border-radius-md) !important;
+    border: 1px solid transparent;
     cursor: pointer;
-    margin: 10px 0;
-    font-family: 'Yekan', sans-serif;
-    font-size: 0.9em;
-    transition: background-color 0.2s ease;
+    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out, transform 0.1s ease;
+    font-size: 14px;
+    text-decoration: none !important;
+    display: inline-block;
+    text-align: center;
+    box-shadow: var(--rs-shadow-sm); /* Subtle shadow */
 }
-.readysms-wrap .copy-btn:hover {
-    background: #4cae4c; /* Darker green */
+.readysms-wrap .button:active,
+.readysms-wrap input[type="submit"]:active {
+    transform: translateY(1px); /* Click effect */
+    box-shadow: none;
 }
 
-/* Admin page specific table styling for settings */
+.readysms-wrap .button-primary,
+.readysms-wrap input[type="submit"]#submit { /* WP's main save button */
+    background-color: var(--rs-primary-color) !important;
+    color: white !important;
+    border-color: var(--rs-primary-color) !important;
+}
+.readysms-wrap .button-primary:hover,
+.readysms-wrap input[type="submit"]#submit:hover {
+    background-color: var(--rs-primary-hover-color) !important;
+    border-color: var(--rs-primary-hover-color) !important;
+    box-shadow: var(--rs-shadow-md); /* Enhanced shadow on hover */
+}
+
+.readysms-wrap .button-secondary {
+    background-color: var(--rs-button-secondary-bg) !important;
+    color: var(--rs-button-secondary-text) !important;
+    border-color: #D1D5DB !important; /* Match border with bg for subtlety */
+}
+.readysms-wrap .button-secondary:hover {
+    background-color: var(--rs-button-secondary-hover-bg) !important;
+    border-color: #9CA3AF !important; /* Slightly darker border on hover */
+    box-shadow: var(--rs-shadow-md);
+}
+
+/* --- Dokme Container (Navigation Buttons as Tabs/Pills) --- */
+.dokme-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0; /* No gap, borders will separate */
+    margin-bottom: 30px !important;
+    border-radius: var(--rs-border-radius-md);
+    overflow: hidden; /* To contain rounded corners of buttons */
+    box-shadow: var(--rs-shadow-sm);
+    border: 1px solid var(--rs-border-color); /* Optional: border around the whole container */
+}
+.dokme {
+    padding: 0;
+    background-color: var(--rs-card-bg-color); /* White background */
+    color: var(--rs-primary-color) !important;
+    text-align: center;
+    transition: background-color 0.2s ease;
+    flex-grow: 1; /* Equal width */
+    border-left: 1px solid var(--rs-border-color); /* Separator */
+}
+.dokme:first-child {
+    border-left: none; /* No left border for the first button */
+}
+.dokme a {
+    font-family: var(--rs-font-family) !important;
+    font-weight: bold; /* Use bold Yekan */
+    display: block;
+    width: 100%;
+    padding: 12px 15px;
+    box-sizing: border-box;
+    color: var(--rs-primary-color) !important;
+    text-decoration: none !important;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+.dokme a:hover {
+    background-color: #E6F0EF; /* Very light green for hover */
+    color: var(--rs-primary-hover-color) !important;
+}
+.dokme.active a, /* Add 'active' class to current page's dokme link via PHP */
+.dokme.current a { /* WP often uses 'current' */
+    background-color: var(--rs-primary-color) !important;
+    color: white !important;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* --- Form Elements --- */
 .readysms-wrap .form-table {
-    margin-bottom: 20px;
+    width: 100%;
+    border-collapse: separate; /* Allows for border-spacing and rounded corners on table */
+    border-spacing: 0;
+    margin-bottom: 30px;
+    background-color: var(--rs-card-bg-color);
+    border-radius: var(--rs-border-radius-lg); /* Rounded corners for the table itself */
+    box-shadow: var(--rs-shadow-md);
+    border: 1px solid var(--rs-border-color);
+    overflow: hidden; /* To clip cell borders to table radius */
+}
+.readysms-wrap .form-table th,
+.readysms-wrap .form-table td {
+    padding: 18px 22px; /* Increased padding */
+    text-align: right;
+    vertical-align: top;
+    border-bottom: 1px solid var(--rs-border-color);
+}
+.readysms-wrap .form-table tr:last-child th,
+.readysms-wrap .form-table tr:last-child td {
+    border-bottom: none;
 }
 .readysms-wrap .form-table th {
-    width: 200px; /* Fixed width for labels */
-    padding-right: 20px; /* Space after label */
+    width: 240px; /* Consistent width */
+    font-weight: bold; /* Use bold Yekan */
+    color: var(--rs-text-color);
+    background-color: #F9FAFB; /* Slightly different bg for th for clarity */
 }
 .readysms-wrap .form-table td input[type="text"],
 .readysms-wrap .form-table td input[type="password"],
-.readysms-wrap .form-table td input[type="number"] {
-    min-width: 350px; /* Ensure inputs are reasonably wide */
+.readysms-wrap .form-table td input[type="number"],
+.readysms-wrap .form-table td input[type="email"],
+.readysms-wrap .form-table td input[type="url"],
+.readysms-wrap .form-table td select,
+.readysms-wrap .form-table td textarea {
+    width: 100%;
+    max-width: 480px;
+    padding: 12px 15px; /* Comfortable padding */
+    border: 1px solid var(--rs-border-color);
+    border-radius: var(--rs-border-radius-md) !important;
+    background-color: var(--rs-input-bg-color);
+    color: var(--rs-text-color);
+    font-family: var(--rs-font-family) !important;
+    font-size: 14px;
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    box-shadow: var(--rs-shadow-sm) inset;
+}
+.readysms-wrap .form-table td input[type="text"]:focus,
+.readysms-wrap .form-table td input[type="password"]:focus,
+.readysms-wrap .form-table td input[type="number"]:focus,
+.readysms-wrap .form-table td input[type="email"]:focus,
+.readysms-wrap .form-table td input[type="url"]:focus,
+.readysms-wrap .form-table td select:focus,
+.readysms-wrap .form-table td textarea:focus {
+    border-color: var(--rs-input-focus-border-color);
+    box-shadow: 0 0 0 3px rgba(0, 99, 93, 0.15); /* Halo effect with primary color */
+    outline: none;
 }
 .readysms-wrap .form-table td input.small-text {
-    min-width: auto;
-    width: 80px;
+    max-width: 120px;
+    width: auto;
+}
+.readysms-wrap .form-table strong {
+    font-weight: bold; /* Use bold Yekan */
+    color: var(--rs-text-color);
 }
 
+/* --- Postbox / Cards --- */
+.readysms-wrap .postbox {
+    background: var(--rs-card-bg-color);
+    border: 1px solid var(--rs-border-color);
+    border-radius: var(--rs-border-radius-lg); /* Larger radius for cards */
+    box-shadow: var(--rs-shadow-md);
+    margin-bottom: 30px;
+}
+.readysms-wrap .postbox .hndle { /* Styling WP postbox title bar */
+    font-family: var(--rs-font-family) !important;
+    font-weight: bold; /* Use bold Yekan */
+    font-size: 16px; /* Consistent with WP */
+    padding: 15px 20px; /* More padding */
+    background-color: #F9FAFB; /* Light header for card */
+    border-bottom: 1px solid var(--rs-border-color);
+    border-top-left-radius: var(--rs-border-radius-lg); /* Match card radius */
+    border-top-right-radius: var(--rs-border-radius-lg);
+    color: var(--rs-text-color);
+    margin: 0; /* Reset default margin from WP if any */
+    line-height: 1.4;
+}
+.readysms-wrap .postbox .handlediv { /* The toggle arrow */
+    height: calc(16px + 15px + 15px); /* Match hndle padding */
+    width: calc(16px + 15px + 15px);
+}
+.readysms-wrap .postbox .handlediv .toggle-indicator:before {
+    font-size: 24px; /* Slightly larger toggle */
+    line-height: calc(16px + 15px + 15px - 4px) !important; /* Center it better */
+}
+.readysms-wrap .postbox .inside {
+    padding: 20px 25px; /* More padding inside cards */
+    line-height: 1.65;
+    font-size: 14px;
+}
+.readysms-wrap .postbox ul {
+    list-style-position: inside; /* Bullets inside padding */
+    padding-right: 0; /* Reset if using inside */
+    margin-bottom: 15px;
+}
+.readysms-wrap .postbox ul li {
+    margin-bottom: 10px; /* More spacing between list items */
+}
 
-/* مدیا کوئری‌ها */
-@media (max-width: 782px) { /* WP admin breakpoint */
+/* --- Specific Sections (API Test, Instructions, etc.) --- */
+.readysms-wrap .instruction-box,
+.readysms-wrap .google-instruction {
+    background-color: #E6F0EF; /* Very Light ReadyStudio Green */
+    border: 1px solid #B2D8D5; /* Lighter ReadyStudio Green for border */
+    color: #004A44; /* Darker ReadyStudio Green for text */
+    padding: 18px 22px;
+    border-radius: var(--rs-border-radius-md);
+    margin-bottom: 25px;
+    line-height: 1.7;
+    box-shadow: var(--rs-shadow-sm);
+}
+.readysms-wrap .google-instruction { /* This was yellow before, adjust if needed */
+    background-color: #FEF3C7; /* Light Yellow */
+    border-color: #FDE68A;
+    color: #92400E; /* Dark Yellow/Brown */
+}
+.readysms-wrap .pattern-code-example {
+    background-color: #EDFDFD; /* Very light cyan/blue */
+    padding: 12px 18px;
+    display: inline-block;
+    border-radius: var(--rs-border-radius-md);
+    border: 1px solid #A7F3F0;
+    font-family: 'Menlo', 'Consolas', monospace;
+    direction: ltr;
+    text-align: left;
+    margin-top: 10px;
+    color: #0E7490; /* Dark Cyan */
+    font-size: 13px;
+    box-shadow: var(--rs-shadow-sm);
+}
+.readysms-wrap .api-test-result {
+    padding: 15px 18px;
+    border: 1px solid var(--rs-border-color);
+    background: #F3F4F6; /* Slightly darker bg for contrast */
+    margin-top: 15px !important;
+    border-radius: var(--rs-border-radius-md);
+    max-height: 350px;
+    overflow-y: auto;
+    direction: ltr;
+    text-align: left;
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-family: 'Menlo', 'Consolas', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    box-shadow: var(--rs-shadow-sm) inset;
+}
+.readysms-wrap .api-test-result.success {
+    border-left: 5px solid var(--rs-primary-color);
+    background-color: #E6F0EF; /* Light primary green */
+    color: var(--rs-primary-hover-color);
+}
+.readysms-wrap .api-test-result.error {
+    border-left: 5px solid #EF4444; /* Red for error */
+    background-color: #FEF2F2;
+    color: #B91C1C;
+}
+
+/* --- Banner & Logo --- */
+.readysms-wrap .readysms-plugin-banner img {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--rs-border-radius-lg);
+    box-shadow: var(--rs-shadow-lg); /* More prominent shadow for banner */
+    margin-bottom: 30px;
+}
+/* For the logo in the powered by section, handled by inline styles in PHP */
+
+/* --- Utility & Helper classes --- */
+.readysms-wrap .text-center { text-align: center; }
+.readysms-wrap .text-left { text-align: left; }
+.readysms-wrap .text-right { text-align: right; }
+.readysms-wrap .ltr-code { direction: ltr; text-align: left; font-family: monospace; }
+.readysms-wrap .mt-3 { margin-top: 1rem; }
+.readysms-wrap .mb-3 { margin-bottom: 1rem; }
+
+/* --- Admin Footer --- */
+/* Styles for the "Powered by ReadyStudio" will be in the PHP for simplicity,
+   but you could move them here:
+.power-by-readystudio {
+    position: fixed; bottom: 10px; right: 15px; font-size: 12px;
+    color: #6B7280; z-index: 10000; background: rgba(255,255,255,0.8);
+    padding: 5px 10px; border-radius: var(--rs-border-radius-md);
+    box-shadow: var(--rs-shadow-md); backdrop-filter: blur(2px);
+}
+.power-by-readystudio a { color: var(--rs-primary-color); text-decoration: none; font-weight: bold;}
+.power-by-readystudio a:hover { color: var(--rs-primary-hover-color); }
+*/
+
+
+/* --- Responsive Adjustments --- */
+@media (max-width: 782px) { /* WordPress standard breakpoint */
+  .readysms-wrap {
+    margin-left: -10px; /* Adjust for smaller screens */
+    padding: 20px 15px;
+  }
   .readysms-wrap .form-table th,
   .readysms-wrap .form-table td {
     display: block;
     width: 100%;
+    padding-left: 15px;
+    padding-right: 15px;
   }
   .readysms-wrap .form-table th {
-    padding-right: 0;
-    padding-bottom: 5px;
+    padding-bottom: 8px; /* More space below label */
+    background-color: transparent; /* Remove distinct bg for th on mobile */
+    border-bottom: none; /* Remove border below label */
+  }
+  .readysms-wrap .form-table td {
+      border-top: 1px solid var(--rs-border-color); /* Add top border for td to separate from th */
+  }
+  .readysms-wrap .form-table tr:first-child td {
+      border-top: none;
   }
    .readysms-wrap .form-table td input[type="text"],
    .readysms-wrap .form-table td input[type="password"],
-   .readysms-wrap .form-table td input[type="number"] {
-        min-width: 0; /* Allow inputs to shrink */
-        width: 100%;
+   .readysms-wrap .form-table td input[type="number"],
+   .readysms-wrap .form-table td select,
+   .readysms-wrap .form-table td textarea {
+        min-width: 0;
+        width: 100% !important;
+        max-width: 100% !important;
     }
     .dokme-container {
-        flex-direction: column; /* Stack buttons vertically */
+        flex-direction: column;
+        gap: 10px; /* Add gap back for stacked buttons */
+        border: none; /* Remove container border for stacked view */
+        box-shadow: none;
     }
     .dokme {
-        width: 100%; /* Full width buttons on small screens */
-        margin-bottom: 5px;
+        width: 100%;
+        margin-bottom: 0; /* Gap handles spacing */
+        border-left: none; /* No side borders for stacked buttons */
+        border-radius: var(--rs-border-radius-md); /* Individual rounding */
+        box-shadow: var(--rs-shadow-sm);
+        border: 1px solid var(--rs-border-color);
     }
-}
+    .dokme:first-child {
+        border-left: none; /* Still none */
+    }
 
-@media (max-width: 1024px) {
-  .readysms-wrap .image-container {
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  }
+    .readysms-wrap h1 { font-size: 22px; padding-bottom: 15px; margin-bottom: 15px;}
+    .readysms-wrap h1 img.readysms-header-logo { width: 30px; height: 30px; margin-left: 10px;}
+    .readysms-wrap h3 { font-size: 18px; }
 }
 
 @media (max-width: 480px) {
-  .readysms-wrap .image-container {
-    grid-template-columns: 1fr; /* Single column */
-  }
-  .readysms-wrap .info-box {
-    flex-basis: 100%; /* Full width boxes */
-  }
+    .readysms-wrap {
+        padding: 15px 10px;
+    }
+     .readysms-wrap .form-table th,
+    .readysms-wrap .form-table td {
+        padding: 12px 10px;
+    }
+    .readysms-wrap .button,
+    .readysms-wrap input[type="submit"] {
+        padding: 10px 18px; /* Slightly smaller padding on very small screens */
+        font-size: 13px;
+    }
+     .readysms-wrap .postbox .inside {
+        padding: 15px;
+    }
 }
-
-/* #wpfooter is hidden by default by WordPress if an admin_footer_text filter returns non-empty.
-   If you want to force hide it regardless: */
-/* #wpfooter { display:none!important; } */
