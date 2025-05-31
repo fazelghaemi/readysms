@@ -304,32 +304,43 @@ add_action('wp_ajax_ready_admin_get_balance', function () {
         wp_send_json_error(__('کلید API پیامک تنظیم نشده است.', 'readysms'));
     }
     
-    // Endpoint: https://api.msgway.com/balance/get, Method: POST, No body needed, only apiKey in header.
-    // payload_is_json is false because there is no JSON body to send.
+    // Endpoint: https://api.msgway.com/balance/get, Method: POST
     $response_from_api = ready_msgway_api_request('https://api.msgway.com/balance/get', $api_key, [], 'POST', false);
 
     if (is_wp_error($response_from_api)) {
         wp_send_json_error(sprintf(__('خطا در دریافت موجودی: %s', 'readysms'), $response_from_api->get_error_message()));
     }
 
-    // Msgway example response for balance/get: {"status":1,"balance":12345.0,"currencyName":"ریال"}
-    if (is_array($response_from_api) && isset($response_from_api['status']) && $response_from_api['status'] == 1 && isset($response_from_api['balance']) && isset($response_from_api['currencyName'])) {
+    // --- START OF CORRECTION based on your log ---
+    // بررسی پاسخ واقعی API:
+    // {"status":"success", "error":{...}, "data":{"balance":52771850}, "http_code_debug":200}
+    if (is_array($response_from_api) && 
+        isset($response_from_api['status']) && $response_from_api['status'] === 'success' &&
+        isset($response_from_api['data']) && is_array($response_from_api['data']) &&
+        isset($response_from_api['data']['balance'])) {
+        
+        $balance = (float)$response_from_api['data']['balance'];
+        $currency_name = __('ریال', 'readysms'); // فرض می‌کنیم واحد پولی همیشه ریال است، چون در پاسخ API نیامده.
+
          wp_send_json_success([
-            'message' => sprintf(__('موجودی شما: %s %s', 'readysms'), number_format_i18n((float)$response_from_api['balance'], 0), esc_html($response_from_api['currencyName'])),
-            'response_data' => $response_from_api
+            'message' => sprintf(__('موجودی شما: %s %s', 'readysms'), number_format_i18n($balance, 0), $currency_name),
+            'response_data' => $response_from_api // ارسال کل پاسخ برای دیباگ در صورت نیاز
         ]);
     } else {
-        $error_message = __('پاسخ دریافت شده برای موجودی، معتبر یا کامل نیست.', 'readysms');
-         if(is_array($response_from_api) && !empty($response_from_api['message'])) {
+        // اگر ساختار پاسخ با چیزی که انتظار داریم مطابقت نداشته باشد
+        $error_message = __('پاسخ دریافت شده برای موجودی، ساختار مورد انتظار را ندارد یا حاوی خطا است.', 'readysms');
+        
+        // تلاش برای خواندن پیام خطای احتمالی از API
+        if(is_array($response_from_api) && isset($response_from_api['error']) && is_array($response_from_api['error']) && !empty($response_from_api['error']['message'])) {
+            $error_message = (string) $response_from_api['error']['message'];
+        } elseif (is_array($response_from_api) && !empty($response_from_api['message'])) { // برای سازگاری با فرمت‌های خطای دیگر
             $error_message = is_array($response_from_api['message']) ? implode('; ', $response_from_api['message']) : $response_from_api['message'];
-        } elseif(is_array($response_from_api) && !empty($response_from_api['Message'])) {
-            $error_message = is_array($response_from_api['Message']) ? implode('; ', $response_from_api['Message']) : $response_from_api['Message'];
         }
-        error_log("ReadySMS Admin Get Balance - Invalid or Incomplete API Response. Expected 'status', 'balance', 'currencyName'. Response: " . wp_json_encode($response_from_api, JSON_UNESCAPED_UNICODE));
+
+        error_log("ReadySMS Admin Get Balance - Invalid or Incomplete API Response Structure. Expected 'status'=='success' and 'data.balance'. Response: " . wp_json_encode($response_from_api, JSON_UNESCAPED_UNICODE));
         wp_send_json_error($error_message);
     }
 });
-
 
 /**
  * AJAX handler for exporting users to CSV.
