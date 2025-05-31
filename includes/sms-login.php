@@ -90,7 +90,45 @@ function ready_sms_send_otp() {
         wp_send_json_error(__('فرمت شماره موبایل وارد شده صحیح نیست یا با تنظیمات کد کشور مطابقت ندارد.', 'readysms'));
         return;
     }
-    
+        $chosen_send_method_by_admin = get_option('ready_sms_send_method', 'sms');
+    $final_send_method = $chosen_send_method_by_admin; // مقدار اولیه
+
+    // بررسی اگر شماره غیر ایرانی است، اجبار به ارسال با SMS
+    if (strpos($international_phone_for_api, '+98') !== 0) {
+        $final_send_method = 'sms'; // اجبار به SMS برای شماره‌های غیر ایرانی
+    }
+
+    // اطمینان از اینکه اگر SMS انتخاب شده، کد پترن SMS وجود دارد
+    if ($final_send_method === 'sms' && empty($sms_template_id)) { // $sms_template_id از قبل خوانده شده
+        wp_send_json_error(__('کد پترن پیامک در تنظیمات مشخص نشده است (برای ارسال پیامک لازم است).', 'readysms'));
+        return;
+    }
+    // ... (ادامه کد برای تولید OTP و ...) ...
+
+    $payload = [
+        "mobile"     => $international_phone_for_api,
+        "method"     => $final_send_method, // استفاده از متد نهایی شده
+    ];
+
+    if ($final_send_method === 'ivr') {
+        // اطمینان از اینکه شماره ایرانی است برای IVR (اگرچه در بالا اجبار به SMS کردیم برای غیر ایرانی)
+        // این شرط اضافی برای اطمینان بیشتر است، اگرچه منطق بالا باید پوشش داده باشد.
+        if (strpos($international_phone_for_api, '+98') !== 0) {
+            // این حالت نباید رخ دهد اگر منطق بالا درست باشد، اما برای اطمینان
+            error_log("ReadySMS: IVR attempted for non-Iranian number, falling back to SMS logic internally which will likely fail due to wrong payload setup if sms_template_id is missing.");
+            // یا اینجا یک خطا برگردانید یا به SMS تغییر دهید و مطمئن شوید payload SMS درست است
+            // برای جلوگیری از پیچیدگی، فرض می‌کنیم منطق اجبار به SMS برای غیرایرانی‌ها کافی است.
+        }
+        $payload["templateID"] = 2; 
+        $payload["code"] = $otp_generated; 
+    } else { // sms
+        $payload["templateID"] = (int) $sms_template_id;
+        $payload["params"]     = [$otp_generated];
+        if (!empty($line_number)) {
+            $payload["lineNumber"] = $line_number;
+        }
+    }
+
     $phone_sanitized_for_transient = readysms_get_storable_phone_format($phone_input);
 
 
