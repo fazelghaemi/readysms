@@ -14,74 +14,76 @@ if (!function_exists('ready_msgway_api_request')) {
         $url = $base_url . ltrim($endpoint_path, '/');
 
         $default_headers = [
-            'Content-Type' => 'application/json',
+            // 'Content-Type' => 'application/json', // Removed for GET, added specifically for POST
             'apiKey'       => $api_key,
         ];
         
-        $headers = isset($args['headers']) ? array_merge($default_headers, $args['headers']) : $default_headers;
-        
         $request_args = [
-            'headers' => $headers,
-            'timeout' => 30,
+            'headers' => $default_headers,
+            'timeout' => 30, // Seconds
         ];
 
+        // Apply specific headers from $args if provided, merging with defaults
+        if (isset($args['headers'])) {
+            $request_args['headers'] = array_merge($default_headers, $args['headers']);
+        }
+
+
         if (strtoupper($method) === 'POST') {
-            $request_args['body'] = isset($args['body']) ? wp_json_encode($args['body']) : null; // Use wp_json_encode
+            // Ensure Content-Type is set for POST requests
+            $request_args['headers']['Content-Type'] = isset($request_args['headers']['Content-Type']) ? $request_args['headers']['Content-Type'] : 'application/json';
+            $request_args['body'] = isset($args['body']) ? wp_json_encode($args['body']) : null;
             $response = wp_remote_post($url, $request_args);
         } else { // GET
-            if (!empty($args['params'])) {
+            if (!empty($args['params'])) { // For query string parameters in GET
                 $url = add_query_arg($args['params'], $url);
             }
             $response = wp_remote_get($url, $request_args);
         }
 
         if (is_wp_error($response)) {
-            return $response;
+            error_log("ReadySMS Msgway API Request (WP_Error) - Method: {$method}, URL: {$url}, Error: " . $response->get_error_message());
+            return $response; // Return WP_Error object
         }
 
         $body_raw = wp_remote_retrieve_body($response);
-        $decoded_body = json_decode($body_raw, true);
+        $decoded_body_as_array = json_decode($body_raw, true); // Decode as associative array
         $http_code = wp_remote_retrieve_response_code($response);
 
+        // Handle HTTP errors (4xx, 5xx)
         if ($http_code >= 400) {
-            $error_message = sprintf(__('Msgway API Error: HTTP %s', 'readysms'), $http_code);
-            $api_error_message = '';
-            if (is_array($decoded_body) && isset($decoded_body['message'])) {
-                $api_error_message = is_array($decoded_body['message']) ? implode(', ', $decoded_body['message']) : $decoded_body['message'];
-            } elseif (is_array($decoded_body) && isset($decoded_body['Message'])) {
-                 $api_error_message = is_array($decoded_body['Message']) ? implode(', ', $decoded_body['Message']) : $decoded_body['Message'];
+            $error_message_from_api = '';
+            if (is_array($decoded_body_as_array) && isset($decoded_body_as_array['message'])) {
+                $error_message_from_api = is_array($decoded_body_as_array['message']) ? implode(', ', $decoded_body_as_array['message']) : $decoded_body_as_array['message'];
+            } elseif (is_array($decoded_body_as_array) && isset($decoded_body_as_array['Message'])) {
+                 $error_message_from_api = is_array($decoded_body_as_array['Message']) ? implode(', ', $decoded_body_as_array['Message']) : $decoded_body_as_array['Message'];
+            } elseif(!empty($body_raw) && is_null($decoded_body_as_array)) { // If response is not JSON but has content
+                $error_message_from_api = substr(strip_tags($body_raw), 0, 250); // Show part of the non-JSON response
             }
-            if (!empty($api_error_message)) {
-                $error_message .= ' - ' . $api_error_message;
-            }
-            // Log the raw body for severe errors too
-            error_log("ReadySMS Msgway API Request Helper - HTTP Error {$http_code}. Raw Body: {$body_raw}");
-            return new WP_Error('msgway_api_error', $error_message, ['status' => $http_code, 'body_raw' => $body_raw, 'decoded_body' => $decoded_body]);
+            $final_error_message = sprintf(__('خطای API راه پیام: کد وضعیت %s', 'readysms'), $http_code) . (!empty($error_message_from_api) ? ' - ' . $error_message_from_api : '');
+            error_log("ReadySMS Msgway API Request (HTTP Error) - Method: {$method}, URL: {$url}, Code: {$http_code}, RawBody: {$body_raw}, ErrorMessage: {$final_error_message}");
+            return new WP_Error('msgway_api_http_error', $final_error_message, ['status' => $http_code, 'body_raw' => $body_raw, 'decoded_body' => $decoded_body_as_array]);
         }
         
-        if (is_array($decoded_body)) {
-            $decoded_body['http_code_debug'] = $http_code; // For debugging success cases
-        } else {
-            if ($http_code < 300 && !is_null(json_decode($body_raw))) { // Check if it was valid JSON that didn't decode to array, or if it was just text
-                // It was valid JSON but not an array (e.g. "true", "null", a number, or a string)
-                // Or it was plain text. For API tests, we expect JSON.
-                // If an endpoint is known to return plain text on success, this needs specific handling.
-                // For now, if we expected JSON array and didn't get it, it's an issue.
-                error_log("ReadySMS Msgway API Request Helper - Expected JSON array, got different valid JSON or plain text. HTTP: {$http_code}. Raw Body: {$body_raw}");
-                // Returning decoded_body which might be null or the scalar value.
-                // Specific handlers must be robust.
-            } else if ($http_code < 300 && is_null(json_decode($body_raw)) && !empty($body_raw)) {
-                // Successful HTTP code, but body is not JSON and not empty (e.g. HTML success page from a proxy)
-                 error_log("ReadySMS Msgway API Request Helper - Successful HTTP but non-JSON body. HTTP: {$http_code}. Raw Body: {$body_raw}");
-                 return new WP_Error('msgway_unexpected_response', __('پاسخ غیرمنتظره از سرور API دریافت شد.', 'readysms'), ['status' => $http_code, 'body_raw' => $body_raw]);
-            }
-            // If $decoded_body is null (json_decode failed) and $body_raw was empty or also null, return null or error
-            if (is_null($decoded_body) && $http_code < 300) {
-                 error_log("ReadySMS Msgway API Request Helper - JSON decode failed for successful HTTP response. HTTP: {$http_code}. Raw Body: {$body_raw}");
-                 // Fall through to return null, or new WP_Error if JSON is strictly required for success.
-            }
+        // Handle successful HTTP codes (2xx) but unexpected response format
+        if ($http_code < 300 && is_null($decoded_body_as_array) && !empty($body_raw)) {
+            // Successful HTTP status, but the body was not valid JSON (e.g., HTML, plain text error not caught by HTTP status)
+            error_log("ReadySMS Msgway API Request (Success with Non-JSON Body) - Method: {$method}, URL: {$url}, Code: {$http_code}, RawBody: {$body_raw}");
+            return new WP_Error('msgway_unexpected_response_type', __('پاسخ دریافت شده از API راه پیام فرمت JSON مورد انتظار را ندارد، اگرچه کد وضعیت HTTP موفقیت‌آمیز بود.', 'readysms'), ['status' => $http_code, 'body_raw' => $body_raw]);
         }
-        return $decoded_body; // Can be array, null, or scalar if JSON was scalar
+        
+        // If decoded_body_as_array is successfully created (even if it's an empty array from an empty JSON response like "[]" or "{}")
+        // or if it's null because the raw body was empty or "null" (which json_decode turns to null)
+        // We add http_code_debug for logging/debugging in the calling functions if needed.
+        if (is_array($decoded_body_as_array)) {
+            $decoded_body_as_array['http_code_debug'] = $http_code;
+        } elseif (is_null($decoded_body_as_array) && $http_code < 300) {
+            // If body was "null" or empty, and HTTP was success, decoded_body_as_array is null.
+            // This is fine if the calling function expects null for some scenarios.
+            // For our specific cases (credit, template), we expect arrays.
+        }
+        
+        return $decoded_body_as_array; // Returns an associative array or null if JSON was "null" or decoding failed for other reasons.
     }
 }
 
@@ -116,16 +118,13 @@ add_action('wp_ajax_ready_admin_send_test_otp', function () {
         wp_send_json_error(__('کلید API یا کد پترن پیامک تنظیم نشده است.', 'readysms'));
     }
 
-    // --- START OF OTP LENGTH CHANGE ---
     $otp_length = (int)get_option('ready_sms_otp_length', 6);
     if ($otp_length < 4 || $otp_length > 7) {
         $otp_length = 6;
     }
     $min_otp_val = pow(10, $otp_length - 1);
     $max_otp_val = pow(10, $otp_length) - 1;
-    $otp = (string)wp_rand($min_otp_val, $max_otp_val); // Test OTP with configured length
-    // --- END OF OTP LENGTH CHANGE ---
-
+    $otp = (string)wp_rand($min_otp_val, $max_otp_val);
 
     $payload = [
         "mobile"     => $international_phone,
@@ -137,31 +136,30 @@ add_action('wp_ajax_ready_admin_send_test_otp', function () {
         $payload["lineNumber"] = $line_number;
     }
 
-    $response = ready_msgway_api_request('send', $api_key, ['body' => $payload], 'POST');
+    $response_from_api = ready_msgway_api_request('send', $api_key, ['body' => $payload], 'POST');
 
-    if (is_wp_error($response)) {
-        wp_send_json_error(sprintf(__('خطا در ارسال پیامک آزمایشی: %s', 'readysms'), $response->get_error_message()));
+    if (is_wp_error($response_from_api)) {
+        wp_send_json_error(sprintf(__('خطا در ارسال پیامک آزمایشی: %s', 'readysms'), $response_from_api->get_error_message()));
     }
 
-    // Based on your previous log, success includes status: "success" and "referenceID"
-    if (is_array($response) && isset($response['status']) && $response['status'] === 'success' && isset($response['referenceID'])) {
+    // Based on user's previous log for a successful send: response has status: "success" and "referenceID"
+    if (is_array($response_from_api) && isset($response_from_api['status']) && $response_from_api['status'] === 'success' && isset($response_from_api['referenceID'])) {
         set_transient('ready_admin_test_otp_' . $phone, $otp, 5 * MINUTE_IN_SECONDS);
         wp_send_json_success([
-            'message' => sprintf(__('پیامک آزمایشی با موفقیت ارسال شد. کد OTP (%1$d رقمی برای تست): %2$s. شناسه مرجع: %3$s', 'readysms'), $otp_length, $otp, esc_html($response['referenceID'])),
-            'response_data' => $response
+            'message' => sprintf(__('پیامک آزمایشی با موفقیت ارسال شد. کد OTP (%1$d رقمی برای تست): %2$s. شناسه مرجع: %3$s', 'readysms'), $otp_length, $otp, esc_html($response_from_api['referenceID'])),
+            'response_data' => $response_from_api // Send full API response for admin to see
         ]);
     } else {
-        $error_message = __('خطای ناشناخته از سمت API راه پیام هنگام ارسال تست.', 'readysms');
-        if(is_array($response) && !empty($response['message'])) {
-            $error_message = is_array($response['message']) ? implode('; ', $response['message']) : $response['message'];
-        } elseif(is_array($response) && !empty($response['Message'])) {
-            $error_message = is_array($response['Message']) ? implode('; ', $response['Message']) : $response['Message'];
-        } elseif (is_array($response) && isset($response['error']) && !is_null($response['error'])) {
-             $error_message = (string) $response['error'];
+        $error_message = __('خطای ناشناخته از سمت API راه پیام هنگام ارسال پیامک آزمایشی.', 'readysms');
+        if(is_array($response_from_api) && !empty($response_from_api['message'])) {
+            $error_message = is_array($response_from_api['message']) ? implode('; ', $response_from_api['message']) : $response_from_api['message'];
+        } elseif(is_array($response_from_api) && !empty($response_from_api['Message'])) {
+            $error_message = is_array($response_from_api['Message']) ? implode('; ', $response_from_api['Message']) : $response_from_api['Message'];
+        } elseif (is_array($response_from_api) && isset($response_from_api['error']) && !is_null($response_from_api['error'])) {
+             $error_message = (string) $response_from_api['error'];
         }
-        // Log the full response for admin test failures as well
-        error_log("ReadySMS Admin Send Test OTP - Failed. Response: " . wp_json_encode($response, JSON_UNESCAPED_UNICODE));
-        wp_send_json_error(sprintf(__('خطا در ارسال تست: %s', 'readysms'), $error_message));
+        error_log("ReadySMS Admin Send Test OTP - API call not considered success or missing expected fields. Response: " . wp_json_encode($response_from_api, JSON_UNESCAPED_UNICODE));
+        wp_send_json_error(sprintf(__('خطا در پردازش پاسخ ارسال تست: %s', 'readysms'), $error_message));
     }
 });
 
@@ -197,24 +195,25 @@ add_action('wp_ajax_ready_admin_verify_test_otp', function () {
         "mobile" => $international_phone,
     ];
 
-    $response = ready_msgway_api_request('otp/verify', $api_key, ['body' => $payload], 'POST');
+    $response_from_api = ready_msgway_api_request('otp/verify', $api_key, ['body' => $payload], 'POST');
 
-    if (is_wp_error($response)) {
-        wp_send_json_error(sprintf(__('خطا در بررسی کد تایید: %s', 'readysms'), $response->get_error_message()));
+    if (is_wp_error($response_from_api)) {
+        wp_send_json_error(sprintf(__('خطا در بررسی کد تایید: %s', 'readysms'), $response_from_api->get_error_message()));
     }
     
-    if (is_array($response) && isset($response['status']) && $response['status'] == 1 && isset($response['message']) && strtolower($response['message']) == 'verified') {
+    // Expected success for verify: status: 1 and message: "Verified" (case-insensitive for message)
+    if (is_array($response_from_api) && isset($response_from_api['status']) && $response_from_api['status'] == 1 && isset($response_from_api['message']) && strtolower($response_from_api['message']) == 'verified') {
         delete_transient('ready_admin_test_otp_' . $phone);
         wp_send_json_success([
             'message' => __('کد تایید صحیح و با موفقیت توسط راه پیام بررسی شد.', 'readysms'),
-            'response_data' => $response
+            'response_data' => $response_from_api
         ]);
     } else {
         $error_message = __('کد تایید نامعتبر یا خطای دیگر از سمت API راه پیام.', 'readysms');
-        if(is_array($response) && !empty($response['message'])) {
-            $error_message = is_array($response['message']) ? implode('; ', $response['message']) : $response['message'];
+        if(is_array($response_from_api) && !empty($response_from_api['message'])) {
+            $error_message = is_array($response_from_api['message']) ? implode('; ', $response_from_api['message']) : $response_from_api['message'];
         }
-        error_log("ReadySMS Admin Verify Test OTP - Failed. Response: " . wp_json_encode($response, JSON_UNESCAPED_UNICODE));
+        error_log("ReadySMS Admin Verify Test OTP - API call not considered success or missing expected fields. Response: " . wp_json_encode($response_from_api, JSON_UNESCAPED_UNICODE));
         wp_send_json_error($error_message);
     }
 });
@@ -229,39 +228,36 @@ add_action('wp_ajax_ready_admin_check_sms_status', function () {
         wp_send_json_error(__('شما مجوز کافی ندارید.', 'readysms'), 403);
     }
 
-    if (!isset($_POST['reference_id'])) {
+    if (!isset($_POST['reference_id']) || empty(trim($_POST['reference_id']))) {
         wp_send_json_error(__('شناسه مرجع (referenceID) وارد نشده است.', 'readysms'));
     }
-    $reference_id = sanitize_text_field(wp_unslash($_POST['reference_id']));
+    $reference_id = sanitize_text_field(trim(wp_unslash($_POST['reference_id'])));
     $api_key = get_option('ready_sms_api_key');
 
     if (empty($api_key)) {
         wp_send_json_error(__('کلید API پیامک تنظیم نشده است.', 'readysms'));
     }
 
-    $response = ready_msgway_api_request('status/' . $reference_id, $api_key, [], 'GET');
+    $response_from_api = ready_msgway_api_request('status/' . $reference_id, $api_key, [], 'GET');
 
-    if (is_wp_error($response)) {
-        wp_send_json_error(sprintf(__('خطا در دریافت وضعیت: %s', 'readysms'), $response->get_error_message()));
+    if (is_wp_error($response_from_api)) {
+        wp_send_json_error(sprintf(__('خطا در دریافت وضعیت پیامک: %s', 'readysms'), $response_from_api->get_error_message()));
     }
     
-    // Assuming a successful GET (HTTP 200) would contain the status info directly in the response array
-    if (is_array($response) && isset($response['http_code_debug']) && $response['http_code_debug'] === 200) {
-         // The structure of a successful status response needs to be known to provide a better message.
-         // For now, just returning the whole response.
+    // A successful GET for status (HTTP 200) is expected to return an array of status info, or a single status object.
+    // The exact structure of a "successful" data response for status needs to be defined by Msgway docs or testing.
+    // For now, if it's an array and not an error, consider it a valid response to display.
+    if (is_array($response_from_api)) { 
          wp_send_json_success([
-            'message' => __('وضعیت پیامک با موفقیت از راه پیام دریافت شد.', 'readysms'),
-            'response_data' => $response 
+            'message' => __('اطلاعات وضعیت پیامک (یا گروه پیامک‌ها) از راه پیام دریافت شد.', 'readysms'),
+            'response_data' => $response_from_api
         ]);
     } else {
-        $error_message = __('خطای ناشناخته هنگام دریافت وضعیت از API راه پیام.', 'readysms');
-        if(is_array($response) && !empty($response['message'])) {
-            $error_message = is_array($response['message']) ? implode('; ', $response['message']) : $response['message'];
-        } elseif (is_array($response) && !empty($response['Message'])) {
-            $error_message = is_array($response['Message']) ? implode('; ', $response['Message']) : $response['Message'];
-        }
-        error_log("ReadySMS Admin Check Status - Failed. Response: " . wp_json_encode($response, JSON_UNESCAPED_UNICODE));
-        wp_send_json_error(sprintf(__('خطا در دریافت وضعیت: %s', 'readysms'), $error_message));
+        // This case would be hit if ready_msgway_api_request returned null (e.g. empty JSON response "null")
+        // or a scalar value which is not expected for this endpoint.
+        $error_message = __('پاسخ دریافت شده برای وضعیت پیامک، ساختار معتبری ندارد.', 'readysms');
+        error_log("ReadySMS Admin Check Status - Invalid or non-array API Response. Response: " . wp_json_encode($response_from_api, JSON_UNESCAPED_UNICODE));
+        wp_send_json_error($error_message);
     }
 });
 
@@ -274,38 +270,37 @@ add_action('wp_ajax_ready_admin_get_template_info', function () {
         wp_send_json_error(__('شما مجوز کافی ندارید.', 'readysms'), 403);
     }
 
-    if (!isset($_POST['template_id_to_test'])) {
+    if (!isset($_POST['template_id_to_test']) || empty(trim($_POST['template_id_to_test']))) {
         wp_send_json_error(__('شناسه قالب (Template ID) وارد نشده است.', 'readysms'));
     }
-    $template_id_to_test = sanitize_text_field(wp_unslash($_POST['template_id_to_test']));
+    $template_id_to_test = sanitize_text_field(trim(wp_unslash($_POST['template_id_to_test'])));
     $api_key = get_option('ready_sms_api_key');
 
     if (empty($api_key)) {
         wp_send_json_error(__('کلید API پیامک تنظیم نشده است.', 'readysms'));
     }
 
-    $response = ready_msgway_api_request('template/' . $template_id_to_test, $api_key, [], 'GET');
+    $response_from_api = ready_msgway_api_request('template/' . $template_id_to_test, $api_key, [], 'GET');
     
-    if (is_wp_error($response)) {
-        wp_send_json_error(sprintf(__('خطا در دریافت اطلاعات قالب: %s', 'readysms'), $response->get_error_message()));
+    if (is_wp_error($response_from_api)) {
+        wp_send_json_error(sprintf(__('خطا در دریافت اطلاعات قالب: %s', 'readysms'), $response_from_api->get_error_message()));
     }
 
-    // Successful GET (HTTP 200) with template data (e.g., 'id' field present)
-    if (is_array($response) && isset($response['http_code_debug']) && $response['http_code_debug'] === 200 && isset($response['id'])) {
+    // Expected success: response is an array and contains 'id' and 'name' (or similar primary keys for a template)
+    if (is_array($response_from_api) && isset($response_from_api['id']) && isset($response_from_api['name'])) {
          wp_send_json_success([
-            'message' => __('اطلاعات قالب با موفقیت از راه پیام دریافت شد.', 'readysms'),
-            'response_data' => $response
+            'message' => sprintf(__('اطلاعات قالب "%s" (ID: %s) با موفقیت از راه پیام دریافت شد.', 'readysms'), esc_html($response_from_api['name']), esc_html($response_from_api['id'])),
+            'response_data' => $response_from_api
         ]);
     } else {
-        $error_message = __('قالب یافت نشد یا خطای دیگر از API راه پیام.', 'readysms');
-        if(is_array($response) && !empty($response['message'])) {
-            $error_message = is_array($response['message']) ? implode('; ', $response['message']) : $response['message'];
-        } elseif(is_array($response) && !empty($response['Message'])) {
-            $error_message = is_array($response['Message']) ? implode('; ', $response['Message']) : $response['Message'];
-        } elseif (isset($response['http_code_debug']) && $response['http_code_debug'] === 404) {
-            $error_message = __('قالب با این شناسه در سامانه راه پیام یافت نشد (404).', 'readysms');
+        $error_message = __('پاسخ دریافت شده برای اطلاعات قالب، معتبر یا کامل نیست.', 'readysms');
+        if(is_array($response_from_api) && !empty($response_from_api['message'])) {
+            $error_message = is_array($response_from_api['message']) ? implode('; ', $response_from_api['message']) : $response_from_api['message'];
+        } elseif (is_array($response_from_api) && !empty($response_from_api['Message'])) {
+            $error_message = is_array($response_from_api['Message']) ? implode('; ', $response_from_api['Message']) : $response_from_api['Message'];
         }
-        error_log("ReadySMS Admin Get Template - Failed. Response: " . wp_json_encode($response, JSON_UNESCAPED_UNICODE));
+        // Note: HTTP 404 for template not found is handled by ready_msgway_api_request returning WP_Error.
+        error_log("ReadySMS Admin Get Template - Invalid or Incomplete API Response (expected id and name). Response: " . wp_json_encode($response_from_api, JSON_UNESCAPED_UNICODE));
         wp_send_json_error($error_message);
     }
 });
@@ -325,26 +320,27 @@ add_action('wp_ajax_ready_admin_get_balance', function () {
         wp_send_json_error(__('کلید API پیامک تنظیم نشده است.', 'readysms'));
     }
     
-    $response = ready_msgway_api_request('credit', $api_key, [], 'GET');
+    $response_from_api = ready_msgway_api_request('credit', $api_key, [], 'GET');
 
-    if (is_wp_error($response)) {
-        wp_send_json_error(sprintf(__('خطا در دریافت موجودی: %s', 'readysms'), $response->get_error_message()));
+    if (is_wp_error($response_from_api)) {
+        wp_send_json_error(sprintf(__('خطا در دریافت موجودی: %s', 'readysms'), $response_from_api->get_error_message()));
     }
 
-    if (is_array($response) && isset($response['http_code_debug']) && $response['http_code_debug'] === 200 && isset($response['credit'])) {
+    // Expected success: response is an array and contains 'credit'
+    if (is_array($response_from_api) && isset($response_from_api['credit'])) {
          wp_send_json_success([
-            'message' => sprintf(__('موجودی شما: %s %s', 'readysms'), number_format_i18n((float)$response['credit'], 2), esc_html(isset($response['currency']) ? $response['currency'] : __('ریال', 'readysms'))),
-            'response_data' => $response
+            'message' => sprintf(__('موجودی شما: %s %s', 'readysms'), number_format_i18n((float)$response_from_api['credit'], 0), esc_html(isset($response_from_api['currency']) ? $response_from_api['currency'] : __('ریال', 'readysms'))),
+            'response_data' => $response_from_api // Contains credit, currency, and http_code_debug
         ]);
     } else {
-        $error_message = __('خطای ناشناخته هنگام دریافت موجودی از API راه پیام.', 'readysms');
-         if(is_array($response) && !empty($response['message'])) {
-            $error_message = is_array($response['message']) ? implode('; ', $response['message']) : $response['message'];
-        } elseif (is_array($response) && !empty($response['Message'])) {
-            $error_message = is_array($response['Message']) ? implode('; ', $response['Message']) : $response['Message'];
+        $error_message = __('پاسخ دریافت شده برای موجودی، معتبر یا کامل نیست.', 'readysms');
+         if(is_array($response_from_api) && !empty($response_from_api['message'])) {
+            $error_message = is_array($response_from_api['message']) ? implode('; ', $response_from_api['message']) : $response_from_api['message'];
+        } elseif (is_array($response_from_api) && !empty($response_from_api['Message'])) {
+            $error_message = is_array($response_from_api['Message']) ? implode('; ', $response_from_api['Message']) : $response_from_api['Message'];
         }
-        error_log("ReadySMS Admin Get Balance - Failed. Response: " . wp_json_encode($response, JSON_UNESCAPED_UNICODE));
-        wp_send_json_error(sprintf(__('خطا در دریافت موجودی: %s', 'readysms'), $error_message));
+        error_log("ReadySMS Admin Get Balance - Invalid or Incomplete API Response (expected credit key). Response: " . wp_json_encode($response_from_api, JSON_UNESCAPED_UNICODE));
+        wp_send_json_error($error_message);
     }
 });
 
