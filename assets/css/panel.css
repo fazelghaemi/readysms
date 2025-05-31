@@ -1,45 +1,49 @@
+/* File: assets/css/panel.css */
 @font-face {
     font-family: 'Yekan';
-    src: url('../font/Yekan.woff') format('woff');
+    /* Adjust path if assets/css/panel.css and assets/font/Yekan.woff are siblings in assets */
+    src: url('../font/Yekan.woff') format('woff'); 
     font-weight: normal;
     font-style: normal;
 }
 
-h1 h2 h3{
-    font-family: 'Yekan', sans-serif;
+.readysms-wrap h1, .readysms-wrap h2, .readysms-wrap h3, .readysms-wrap p, .readysms-wrap th, .readysms-wrap td, .readysms-wrap label, .readysms-wrap .button, .readysms-wrap .dokme a {
+    font-family: 'Yekan', sans-serif !important;
 }
-.wrap {
-    font-family: yekan!important;
+.readysms-wrap {
+    font-family: 'Yekan', sans-serif !important;
 }
-.wrap p{
-    font-family: yekan!important;
-}
-.rtl h1,.rtl h3{
-    font-family: yekan!important;
+
+/*rtl*/
+.rtl .readysms-wrap h1, .rtl .readysms-wrap h3{
+    font-family: 'Yekan', sans-serif !important;
 }
 .dokme-container {
     display: flex;
+    flex-wrap: wrap; /* Allow buttons to wrap on smaller screens */
     gap: 10px; /* فاصله بین دکمه‌ها */
 }
 
 .dokme {
-    padding: 5px;
+    padding: 5px; /* Reduced padding for better fit */
     background-color: #2271b1;
-    color: white;
-    width: 150px;
+    color: white !important; /* Ensure text color is white */
+    min-width: 150px; /* Use min-width for responsiveness */
     border-radius: 5px;
     text-align: center;
     transition: background-color 0.3s ease-in-out;
+    box-sizing: border-box;
 }
 
 .dokme:hover {
-    background-color: green;
+    background-color: #1e639a; /* Slightly darker blue for hover */
 }
 
 .dokme a {
-    color: white;
+    color: white !important; /* Ensure text color is white */
     text-decoration: none;
     display: block;
+    padding: 8px 12px; /* Add padding to the link itself */
 }
 .box-sett-1 {
     background-color:white;
@@ -61,290 +65,275 @@ h1 h2 h3{
     margin-top:20px;
 }
 
-/* ریست کردن استایل‌های پیش‌فرض */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* General reset for plugin scope if needed, but usually WP admin handles this */
+/* .readysms-wrap * { margin: 0; padding: 0; box-sizing: border-box; } */
 
-/* استایل‌های کانتینر اصلی */
-.container {
+/* استایل‌های کانتینر اصلی (مثال برای باکس‌های راهنما در داشبورد) */
+.readysms-wrap .info-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  justify-content: center;
-  padding: 10px;
-  margin-top:50px;
+  gap: 20px; /* Increased gap */
+  justify-content: space-around; /* Better distribution */
+  padding: 10px 0; /* Vertical padding */
+  margin-top:20px;
 }
 
 /* استایل‌های باکس‌ها */
-.box {
+.readysms-wrap .info-box { /* Prefixed with .readysms-wrap to scope */
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  width: 300px;
-  height: 250px;
-  background-color: #f1f1f1;
-  padding: 0px;
+  align-items: flex-start; /* Align content to the start (right for RTL) */
+  flex-basis: 300px; /* Base width for flex items */
+  flex-grow: 1; /* Allow boxes to grow */
+  min-height: 200px; /* Min height */
+  background-color: #f9f9f9;
+  padding: 0px; /* Padding handled by inner elements or box-title */
   text-align: right;
-  border: 1px solid black;
+  border: 1px solid #ddd;
   border-radius: 5px;
-  overflow-y: auto;
+  overflow: hidden; /* For title background */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
-.box a {
+.readysms-wrap .info-box a.box-link { /* Specific for links acting as boxes */
   display: flex;
   justify-content: space-between;
   align-items: center;
   width: 100%;
+  padding: 15px; /* Padding for link content */
+  box-sizing: border-box;
 }
 
-.box img {
-  width: 70px;
-  height: 70px;
-  margin-left: 10px;
+.readysms-wrap .info-box img.box-icon { /* Specific for icons in boxes */
+  width: 60px; /* Adjusted size */
+  height: 60px;
+  margin-left: 15px; /* Space on the left of icon (right for LTR) */
 }
 
 /* استایل‌های عناوین باکس‌ها */
-.box-title-1 {
+.readysms-wrap .box-title { /* Common style for titles */
   width: 100%;
-  background-color: red;
-  padding-top: 20px;
-  padding-bottom: 20px;
-  margin-top: -10px;
+  padding: 15px 20px; /* Adjusted padding */
   color: white;
-  font-family: yekan;
+  font-family: 'Yekan', sans-serif;
   text-align: center;
+  font-size: 1.1em;
+  box-sizing: border-box;
 }
 
-.box-title-2 {
-  width: 100%;
-  background-color: #0088cc;
-  padding-top: 20px;
-  padding-bottom: 20px;
-  margin-top: -10px;
-  color: white;
-  font-family: yekan;
-  text-align: center;
+.readysms-wrap .box-title-1 { background-color: #d9534f; } /* Red */
+.readysms-wrap .box-title-2 { background-color: #0088cc; } /* Blue */
+.readysms-wrap .box-title-3 { background-color: #5cb85c; } /* Green */
+.readysms-wrap .box-title-4 { background-color: #f0ad4e; } /* Orange */
+.readysms-wrap .box-title-5 { background-color: #9b0740; } /* Purple */
+
+
+.readysms-wrap .sub-box {
+  padding: 15px 20px; /* Padding for content below title */
+  font-size: 0.95em;
+  line-height: 1.6;
 }
 
-.box-title-3 {
-  width: 100%;
-  background-color: green;
-  padding-top: 20px;
-  padding-bottom: 20px;
-  margin-top: -10px;
-  color: white;
-  font-family: yekan;
-  text-align: center;
-}
-
-.box-title-4 {
-  width: 100%;
-  background-color: #1ec418;
-  padding-top: 20px;
-  padding-bottom: 20px;
-  margin-top: -10px;
-  color: white;
-  font-family: yekan;
-  text-align: center;
-}
-
-.box-title-5 {
-  width: 100%;
-  background-color: #9b0740;
-  padding-top: 20px;
-  padding-bottom: 20px;
-  margin-top: -10px;
-  color: white;
-  font-family: yekan;
-  text-align: center;
-}
-
-/* استایل‌های زیرمجموعه‌ها */
-.sub-box {
-  padding-right: 10px;
-}
-
-.sub-title-box {
-  font-size: 15px;
-  font-family: yekan;
+.readysms-wrap .sub-title-box {
+  font-size: 1em; /* Slightly larger */
+  font-family: 'Yekan', sans-serif;
+  font-weight: bold;
+  margin-bottom: 8px;
 }
 
 /* استایل‌های متفرقه */
-.host-title {
-  font-family: yekan;
-  font-size: 15px;
+.readysms-wrap .host-title {
+  font-family: 'Yekan', sans-serif;
+  font-size: 1.1em; /* Adjusted */
   margin-right: 10px;
   font-weight: 800;
 }
 
-.review {
+.readysms-wrap .review {
   color: black !important;
   font-weight: 900;
 }
 
-.copy-right {
+.readysms-wrap .copy-right { /* Assuming this is for footer */
   margin-top: 25px;
+  text-align: center;
+  font-size: 0.9em;
+  color: #777;
 }
 
-a {
+.readysms-wrap a { /* General link styling within wrap */
   text-decoration: none !important;
+  color: #0073aa; /* WP default link color */
+}
+.readysms-wrap a:hover {
+  color: #00a0d2; /* WP default link hover */
 }
 
 /* استایل‌های اضافی */
-.text-field {
-  font-family: yekan;
+.readysms-wrap .text-field { /* For general text inputs if needed */
+  font-family: 'Yekan', sans-serif;
 }
 
-.button1 {
-  font-family: yekan;
-  background-color: blue !important;
-}
 
-.button1:hover {
-  background-color: green !important;
-}
-
-.button2 {
-  font-family: yekan;
-  background-color: green !important;
-  padding: 0px 15px !important;
-}
-
-.button2:hover {
-  background-color: red !important;
-}
-
-.plugin-logo img {
-  border: 1px solid green;
+.readysms-wrap .plugin-logo img {
+  border: 1px solid #5cb85c; /* Green border */
   border-radius: 10px;
   background-color: transparent;
+  padding: 5px; /* Padding around logo */
 }
 
-.image-container {
-  margin-top: 50px;
+.readysms-wrap .image-container {
+  margin-top: 30px; /* Adjusted margin */
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Responsive grid */
+  gap: 15px; /* Adjusted gap */
   width: 100%;
 }
 
-.image-container img {
-  height: 250px;
+.readysms-wrap .image-container img {
+  width: 100%; /* Make images responsive */
+  height: auto; /* Maintain aspect ratio */
+  max-height: 200px; /* Max height for consistency */
   border-radius: 10px;
+  object-fit: cover; /* Ensure images cover the area nicely */
 }
 
-.baners {
-  width: 80% !important;
-}
 
-.text-img {
-  font-family: yekan;
-  font-size: 20px;
+.readysms-wrap .text-img {
+  font-family: 'Yekan', sans-serif;
+  font-size: 1.2em; /* Adjusted size */
   text-align: center;
   font-weight: 700;
-  color: green;
+  color: #5cb85c; /* Green */
+  margin-top: 10px;
 }
 
-.title-dis {
-  font-family: yekan !important;
-  font-size: 25px;
+.readysms-wrap .title-dis {
+  font-family: 'Yekan', sans-serif !important;
+  font-size: 1.5em; /* Adjusted size */
+  margin-bottom: 15px;
 }
 
-.new-item {
+.readysms-wrap .new-item {
   margin-top: 10px;
   width: 100%;
   text-align: center;
-  background-color: #ddd;
-  padding: 5px;
-  border-radius: 3px;
+  background-color: #e9e9e9; /* Lighter gray */
+  padding: 8px 10px; /* Adjusted padding */
+  border-radius: 4px;
+  font-size: 0.9em;
 }
 
-#pw_pw_gateways_setup {
+/* This ID seems specific, ensure it's used within .readysms-wrap if plugin-scoped */
+#pw_pw_gateways_setup { 
   display:none;
 }
 
-.matn  {
+.readysms-wrap .matn  { /* For LTR text within RTL page */
     text-align: left!important;
     width:90%;
-    line-height: 30px;
+    line-height: 1.7; /* Increased line height */
+    direction: ltr;
+    background-color: #f0f0f0;
+    padding: 10px;
+    border-radius: 4px;
+    border-right: 3px solid #0073aa;
+    font-family: monospace, 'Courier New', Courier; /* Monospace for code-like text */
 }
 
-.pattern-code-example {
-    background-color:#D6FCD9;
-    padding:20px;
+.readysms-wrap .pattern-code-example {
+    background-color:#e6ffe8; /* Lighter green */
+    padding:10px 15px; /* Adjusted padding */
     display: inline-block; 
-    border-radius:10px;
+    border-radius:4px;
+    border: 1px solid #c3e6cb;
+    font-family: monospace, 'Courier New', Courier;
+    direction: rtl;
+    margin-top: 5px;
 }
 
-.description {
-    margin-top:20px!important;
+.readysms-wrap .description { /* For form table descriptions */
+    margin-top:5px!important; /* Reduced margin */
+    font-size: 0.9em;
+    color: #555;
 }
 
-.copy-btn {
-    background: #4CAF50;
+.readysms-wrap .copy-btn {
+    background: #5cb85c; /* Green */
     color: white;
     border: none;
-    padding: 5px 20px;
-    border-radius: 5px;
+    padding: 8px 15px; /* Adjusted padding */
+    border-radius: 4px;
     cursor: pointer;
     margin: 10px 0;
-    word-spacing: 2px;
+    font-family: 'Yekan', sans-serif;
+    font-size: 0.9em;
+    transition: background-color 0.2s ease;
 }
+.readysms-wrap .copy-btn:hover {
+    background: #4cae4c; /* Darker green */
+}
+
+/* Admin page specific table styling for settings */
+.readysms-wrap .form-table {
+    margin-bottom: 20px;
+}
+.readysms-wrap .form-table th {
+    width: 200px; /* Fixed width for labels */
+    padding-right: 20px; /* Space after label */
+}
+.readysms-wrap .form-table td input[type="text"],
+.readysms-wrap .form-table td input[type="password"],
+.readysms-wrap .form-table td input[type="number"] {
+    min-width: 350px; /* Ensure inputs are reasonably wide */
+}
+.readysms-wrap .form-table td input.small-text {
+    min-width: auto;
+    width: 80px;
+}
+
 
 /* مدیا کوئری‌ها */
-@media (max-width: 1024px) {
-  .image-container {
-    grid-template-columns: repeat(3, 1fr);
+@media (max-width: 782px) { /* WP admin breakpoint */
+  .readysms-wrap .form-table th,
+  .readysms-wrap .form-table td {
+    display: block;
+    width: 100%;
   }
+  .readysms-wrap .form-table th {
+    padding-right: 0;
+    padding-bottom: 5px;
+  }
+   .readysms-wrap .form-table td input[type="text"],
+   .readysms-wrap .form-table td input[type="password"],
+   .readysms-wrap .form-table td input[type="number"] {
+        min-width: 0; /* Allow inputs to shrink */
+        width: 100%;
+    }
+    .dokme-container {
+        flex-direction: column; /* Stack buttons vertically */
+    }
+    .dokme {
+        width: 100%; /* Full width buttons on small screens */
+        margin-bottom: 5px;
+    }
 }
 
-@media (max-width: 768px) {
-  .image-container {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .box {
-    width: 30%;
+@media (max-width: 1024px) {
+  .readysms-wrap .image-container {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   }
 }
 
 @media (max-width: 480px) {
-  .image-container {
-    grid-template-columns: 1fr;
+  .readysms-wrap .image-container {
+    grid-template-columns: 1fr; /* Single column */
   }
-  .box {
-    width: 100%;
+  .readysms-wrap .info-box {
+    flex-basis: 100%; /* Full width boxes */
   }
 }
 
-#wpfooter {
-    display:none!important;
-}
-.matn  {
-    text-align: left!important;
-    width:90%;
-    line-height: 30px;
-}
-.pattern-code-example {
-    background-color:#D6FCD9;
-    padding:20px;
-    display: inline-block; 
-    border-radius:10px;
-}
-
-.description {
-    margin-top:20px!important;
-}
-
-.copy-btn {
-    background: #4CAF50;
-    color: white;
-    border: none;
-    padding: 5px 20px;
-    border-radius: 5px;
-    cursor: pointer;
-    margin: 10px 0;
-    word-spacing: 2px;
-}
+/* #wpfooter is hidden by default by WordPress if an admin_footer_text filter returns non-empty.
+   If you want to force hide it regardless: */
+/* #wpfooter { display:none!important; } */
