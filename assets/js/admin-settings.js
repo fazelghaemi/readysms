@@ -1,101 +1,134 @@
 // File: assets/js/admin-settings.js
 jQuery(document).ready(function($) {
     if (typeof readyLoginAdminAjax === 'undefined') {
-        // console.error('ReadySMS Admin: Localization object not found.');
+        console.error('ReadySMS Admin: Localization object (readyLoginAdminAjax) not found.');
         return;
     }
 
-    // Helper to display results
-    function displayResult(elementId, data, isSuccess) {
-        const resultDiv = $('#' + elementId);
+    const adminOtpLength = readyLoginAdminAjax.otp_length || 6;
+    const adminTestOtpInput = $('#admin_test_otp_code');
+
+    if (adminTestOtpInput.length) {
+        adminTestOtpInput.attr('placeholder', adminOtpLength + ' ' + 'رقمی');
+        adminTestOtpInput.attr('maxlength', adminOtpLength);
+    }
+
+    // Helper to display results and manage button states
+    function handleApiResponse(buttonElement, resultDivId, response, successBtnText, errorBtnText) {
+        buttonElement.prop('disabled', false).text(successBtnText); // Reset button text assuming success, override on error
+        const resultDiv = $('#' + resultDivId);
         if (!resultDiv.length) return;
 
         let messageHtml = '';
+        let isSuccess = response.success;
+
         if (isSuccess) {
-            messageHtml = '<p><strong>' + (data.message || 'موفقیت آمیز بود.') + '</strong></p>';
-             if (data.response_data || (data.credit && data.currency)) { // For balance
-                messageHtml += '<pre>' + JSON.stringify(data.response_data || data, null, 2) + '</pre>';
+            messageHtml = '<p><strong>' + (response.data.message || 'موفقیت آمیز بود.') + '</strong></p>';
+             if (response.data.response_data || (response.data.credit && response.data.currency)) {
+                messageHtml += '<pre>' + JSON.stringify(response.data.response_data || response.data, null, 2) + '</pre>';
             }
         } else {
-            messageHtml = '<p><strong>' + (data.message || data.data || 'خطا رخ داد.') + '</strong></p>';
-            if (data.response_data) {
-                messageHtml += '<pre>' + JSON.stringify(data.response_data, null, 2) + '</pre>';
+            buttonElement.text(errorBtnText || successBtnText); // Use specific error button text or default back
+            const errorMessage = response.data ? (response.data.message || response.data) : readyLoginAdminAjax.msg_unexpected_error;
+            messageHtml = '<p><strong>' + errorMessage + '</strong></p>';
+            if (response.data && response.data.response_data) { // If PHP sent additional data with error
+                messageHtml += '<pre>' + JSON.stringify(response.data.response_data, null, 2) + '</pre>';
             }
         }
         resultDiv.html(messageHtml).removeClass('success error').addClass(isSuccess ? 'success' : 'error').show();
+        
+        // Toastr notifications (optional, remove if not using toastr)
         if (typeof toastr !== 'undefined') {
-            if(isSuccess) toastr.success(data.message || 'عملیات موفقیت آمیز بود.');
-            else toastr.error(data.message || data.data || 'خطا در انجام عملیات.');
+            if(isSuccess) {
+                toastr.success(response.data.message || 'عملیات موفقیت آمیز بود.');
+            } else {
+                const toastMessage = response.data ? (response.data.message || response.data) : 'خطا در انجام عملیات.';
+                toastr.error(toastMessage);
+            }
         }
     }
+    
+    function handleApiFailure(buttonElement, resultDivId, defaultBtnText) {
+        buttonElement.prop('disabled', false).text(defaultBtnText);
+        const resultDiv = $('#' + resultDivId);
+        if (resultDiv.length) {
+            resultDiv.html('<p><strong>' + readyLoginAdminAjax.msg_unexpected_error + '</strong></p>')
+                     .removeClass('success').addClass('error').show();
+        }
+        if (typeof toastr !== 'undefined') {
+            toastr.error(readyLoginAdminAjax.msg_unexpected_error);
+        }
+    }
+
 
     // 1. Send Test OTP
     $('#admin_send_test_otp_button').on('click', function() {
         const phone = $('#admin_test_phone_number').val().trim();
         const resultDivId = 'admin_test_otp_result';
-        $('#' + resultDivId).hide().empty(); // Clear previous result
+        const $thisButton = $(this);
+        const defaultButtonText = readyLoginAdminAjax.send_otp_btn_text;
+
+        $('#' + resultDivId).hide().empty(); 
 
         if (!phone) {
-            displayResult(resultDivId, { message: readyLoginAdminAjax.msg_fill_phone }, false);
+            handleApiResponse($thisButton, resultDivId, {success: false, data: {message: readyLoginAdminAjax.msg_fill_phone}}, defaultButtonText, defaultButtonText);
             return;
         }
         if (!/^(09\d{9})$/.test(phone)) {
-            displayResult(resultDivId, { message: 'قالب شماره موبایل صحیح نیست (مثال: 09123456789)' }, false);
+             handleApiResponse($thisButton, resultDivId, {success: false, data: {message: 'قالب شماره موبایل صحیح نیست (مثال: 09123456789)'}}, defaultButtonText, defaultButtonText);
             return;
         }
 
-
-        $(this).prop('disabled', true).text('در حال ارسال...');
+        $thisButton.prop('disabled', true).text(readyLoginAdminAjax.sending_text);
 
         $.post(readyLoginAdminAjax.ajaxurl, {
             action: readyLoginAdminAjax.send_test_otp_action,
             nonce: readyLoginAdminAjax.nonce,
             phone_number: phone
-        }, function(response) {
-            $('#admin_send_test_otp_button').prop('disabled', false).text('ارسال پیامک OTP آزمایشی');
+        })
+        .done(function(response) {
+            handleApiResponse($thisButton, resultDivId, response, defaultButtonText, defaultButtonText);
             if (response.success) {
-                displayResult(resultDivId, response.data, true);
-                $('#admin_verify_otp_section').show();
-                $('#admin_test_otp_code').focus();
+                $('#admin_verify_otp_section').slideDown();
+                adminTestOtpInput.focus();
             } else {
-                displayResult(resultDivId, response.data || {message: 'خطای ناشناخته'}, false);
-                $('#admin_verify_otp_section').hide();
+                $('#admin_verify_otp_section').slideUp();
             }
-        }).fail(function() {
-            $('#admin_send_test_otp_button').prop('disabled', false).text('ارسال پیامک OTP آزمایشی');
-            displayResult(resultDivId, { message: readyLoginAdminAjax.msg_unexpected_error }, false);
-             $('#admin_verify_otp_section').hide();
+        })
+        .fail(function() {
+            handleApiFailure($thisButton, resultDivId, defaultButtonText);
+            $('#admin_verify_otp_section').slideUp();
         });
     });
 
     // 2. Verify Test OTP
     $('#admin_verify_test_otp_button').on('click', function() {
-        const phone = $('#admin_test_phone_number').val().trim(); // Assumed phone is still there
-        const otp = $('#admin_test_otp_code').val().trim();
-        const resultDivId = 'admin_test_otp_result'; // Display result in the same area
+        const phone = $('#admin_test_phone_number').val().trim();
+        const otp = adminTestOtpInput.val().trim();
+        const resultDivId = 'admin_test_otp_result';
+        const $thisButton = $(this);
+        const defaultButtonText = readyLoginAdminAjax.verify_otp_btn_text;
 
-        if (!otp) {
-            displayResult(resultDivId, { message: readyLoginAdminAjax.msg_fill_otp }, false);
+        const otpRegex = new RegExp(`^\\d{${adminOtpLength}}$`);
+        if (!otp || !otpRegex.test(otp)) {
+            const errorMsg = readyLoginAdminAjax.msg_fill_otp_len_invalid + ' (' + adminOtpLength + ' ' + 'رقمی)';
+            handleApiResponse($thisButton, resultDivId, {success: false, data: {message: errorMsg}}, defaultButtonText, defaultButtonText);
             return;
         }
-         if (!/^\d{6}$/.test(otp)) {
-            displayResult(resultDivId, { message: 'کد تایید باید ۶ رقم باشد.' }, false);
-            return;
-        }
 
-        $(this).prop('disabled', true).text('در حال بررسی...');
+        $thisButton.prop('disabled', true).text(readyLoginAdminAjax.verifying_text);
 
         $.post(readyLoginAdminAjax.ajaxurl, {
             action: readyLoginAdminAjax.verify_test_otp_action,
             nonce: readyLoginAdminAjax.nonce,
             phone_number: phone,
             otp_code: otp
-        }, function(response) {
-            $('#admin_verify_test_otp_button').prop('disabled', false).text('بررسی کد OTP');
-            displayResult(resultDivId, response.data || {message: 'خطای ناشناخته'}, response.success);
-        }).fail(function() {
-            $('#admin_verify_test_otp_button').prop('disabled', false).text('بررسی کد OTP');
-            displayResult(resultDivId, { message: readyLoginAdminAjax.msg_unexpected_error }, false);
+        })
+        .done(function(response) {
+            handleApiResponse($thisButton, resultDivId, response, defaultButtonText, defaultButtonText);
+        })
+        .fail(function() {
+            handleApiFailure($thisButton, resultDivId, defaultButtonText);
         });
     });
 
@@ -103,24 +136,26 @@ jQuery(document).ready(function($) {
     $('#admin_check_status_button').on('click', function() {
         const refId = $('#admin_status_reference_id').val().trim();
         const resultDivId = 'admin_status_result';
-        $('#' + resultDivId).hide().empty();
+        const $thisButton = $(this);
+        const defaultButtonText = readyLoginAdminAjax.check_status_btn_text;
 
+        $('#' + resultDivId).hide().empty();
         if (!refId) {
-            displayResult(resultDivId, { message: readyLoginAdminAjax.msg_fill_ref_id }, false);
+             handleApiResponse($thisButton, resultDivId, {success: false, data: {message: readyLoginAdminAjax.msg_fill_ref_id}}, defaultButtonText, defaultButtonText);
             return;
         }
-        $(this).prop('disabled', true).text('در حال بررسی...');
+        $thisButton.prop('disabled', true).text(readyLoginAdminAjax.fetching_text);
 
         $.post(readyLoginAdminAjax.ajaxurl, {
             action: readyLoginAdminAjax.check_status_action,
             nonce: readyLoginAdminAjax.nonce,
             reference_id: refId
-        }, function(response) {
-             $('#admin_check_status_button').prop('disabled', false).text('بررسی وضعیت');
-            displayResult(resultDivId, response.data || {message: 'خطای ناشناخته'}, response.success);
-        }).fail(function() {
-            $('#admin_check_status_button').prop('disabled', false).text('بررسی وضعیت');
-            displayResult(resultDivId, { message: readyLoginAdminAjax.msg_unexpected_error }, false);
+        })
+        .done(function(response) {
+            handleApiResponse($thisButton, resultDivId, response, defaultButtonText, defaultButtonText);
+        })
+        .fail(function() {
+            handleApiFailure($thisButton, resultDivId, defaultButtonText);
         });
     });
 
@@ -128,42 +163,47 @@ jQuery(document).ready(function($) {
     $('#admin_get_template_button').on('click', function() {
         const templateId = $('#admin_template_id_test').val().trim();
         const resultDivId = 'admin_template_result';
-        $('#' + resultDivId).hide().empty();
+        const $thisButton = $(this);
+        const defaultButtonText = readyLoginAdminAjax.get_template_btn_text;
 
+        $('#' + resultDivId).hide().empty();
         if (!templateId) {
-            displayResult(resultDivId, { message: readyLoginAdminAjax.msg_fill_template_id }, false);
+            handleApiResponse($thisButton, resultDivId, {success: false, data: {message: readyLoginAdminAjax.msg_fill_template_id}}, defaultButtonText, defaultButtonText);
             return;
         }
-        $(this).prop('disabled', true).text('در حال دریافت...');
+        $thisButton.prop('disabled', true).text(readyLoginAdminAjax.fetching_text);
 
-        $.post(readyLoginAjax.ajaxurl, {
+        $.post(readyLoginAdminAjax.ajaxurl, {
             action: readyLoginAdminAjax.get_template_action,
             nonce: readyLoginAdminAjax.nonce,
-            template_id_to_test: templateId // Changed from 'template_id' to match PHP
-        }, function(response) {
-            $('#admin_get_template_button').prop('disabled', false).text('دریافت اطلاعات قالب');
-            displayResult(resultDivId, response.data || {message: 'خطای ناشناخته'}, response.success);
-        }).fail(function() {
-            $('#admin_get_template_button').prop('disabled', false).text('دریافت اطلاعات قالب');
-            displayResult(resultDivId, { message: readyLoginAdminAjax.msg_unexpected_error }, false);
+            template_id_to_test: templateId
+        })
+        .done(function(response) {
+            handleApiResponse($thisButton, resultDivId, response, defaultButtonText, defaultButtonText);
+        })
+        .fail(function() {
+            handleApiFailure($thisButton, resultDivId, defaultButtonText);
         });
     });
 
     // 5. Get Balance
     $('#admin_get_balance_button').on('click', function() {
         const resultDivId = 'admin_balance_result';
-        $('#' + resultDivId).hide().empty();
-        $(this).prop('disabled', true).text('در حال دریافت...');
+        const $thisButton = $(this);
+        const defaultButtonText = readyLoginAdminAjax.get_balance_btn_text;
 
-        $.post(readyLoginAjax.ajaxurl, {
+        $('#' + resultDivId).hide().empty();
+        $thisButton.prop('disabled', true).text(readyLoginAdminAjax.fetching_text);
+
+        $.post(readyLoginAdminAjax.ajaxurl, {
             action: readyLoginAdminAjax.get_balance_action,
             nonce: readyLoginAdminAjax.nonce
-        }, function(response) {
-            $('#admin_get_balance_button').prop('disabled', false).text('دریافت موجودی');
-            displayResult(resultDivId, response.data || {message: 'خطای ناشناخته'}, response.success);
-        }).fail(function() {
-            $('#admin_get_balance_button').prop('disabled', false).text('دریافت موجودی');
-            displayResult(resultDivId, { message: readyLoginAdminAjax.msg_unexpected_error }, false);
+        })
+        .done(function(response) {
+            handleApiResponse($thisButton, resultDivId, response, defaultButtonText, defaultButtonText);
+        })
+        .fail(function() {
+            handleApiFailure($thisButton, resultDivId, defaultButtonText);
         });
     });
 
@@ -175,17 +215,17 @@ jQuery(document).ready(function($) {
             "newestOnTop": true,
             "progressBar": true,
             "positionClass": "toast-top-left", // RTL friendly
-            "preventDuplicates": false,
+            "preventDuplicates": true, // Prevent same toast from showing multiple times
             "onclick": null,
             "showDuration": "300",
             "hideDuration": "1000",
-            "timeOut": "5000",
-            "extendedTimeOut": "1000",
+            "timeOut": "7000", // Longer timeout
+            "extendedTimeOut": "2000",
             "showEasing": "swing",
             "hideEasing": "linear",
             "showMethod": "fadeIn",
             "hideMethod": "fadeOut",
-            "rtl": ($('body').hasClass('rtl')) // Auto-detect RTL
+            "rtl": (jQuery('body').hasClass('rtl'))
         };
     }
 });
