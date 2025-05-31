@@ -311,29 +311,25 @@ add_action('wp_ajax_ready_admin_get_balance', function () {
         wp_send_json_error(sprintf(__('خطا در دریافت موجودی: %s', 'readysms'), $response_from_api->get_error_message()));
     }
 
-    // --- START OF CORRECTION based on your log ---
-    // بررسی پاسخ واقعی API:
-    // {"status":"success", "error":{...}, "data":{"balance":52771850}, "http_code_debug":200}
     if (is_array($response_from_api) && 
         isset($response_from_api['status']) && $response_from_api['status'] === 'success' &&
         isset($response_from_api['data']) && is_array($response_from_api['data']) &&
         isset($response_from_api['data']['balance'])) {
         
         $balance = (float)$response_from_api['data']['balance'];
-        $currency_name = __('ریال', 'readysms'); // فرض می‌کنیم واحد پولی همیشه ریال است، چون در پاسخ API نیامده.
+        $currency_name = __('ریال', 'readysms');
 
          wp_send_json_success([
             'message' => sprintf(__('موجودی شما: %s %s', 'readysms'), number_format_i18n($balance, 0), $currency_name),
-            'response_data' => $response_from_api // ارسال کل پاسخ برای دیباگ در صورت نیاز
+            'response_data' => $response_from_api
         ]);
     } else {
-        // اگر ساختار پاسخ با چیزی که انتظار داریم مطابقت نداشته باشد
         $error_message = __('پاسخ دریافت شده برای موجودی، ساختار مورد انتظار را ندارد یا حاوی خطا است.', 'readysms');
         
         // تلاش برای خواندن پیام خطای احتمالی از API
         if(is_array($response_from_api) && isset($response_from_api['error']) && is_array($response_from_api['error']) && !empty($response_from_api['error']['message'])) {
             $error_message = (string) $response_from_api['error']['message'];
-        } elseif (is_array($response_from_api) && !empty($response_from_api['message'])) { // برای سازگاری با فرمت‌های خطای دیگر
+        } elseif (is_array($response_from_api) && !empty($response_from_api['message'])) { 
             $error_message = is_array($response_from_api['message']) ? implode('; ', $response_from_api['message']) : $response_from_api['message'];
         }
 
