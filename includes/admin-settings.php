@@ -174,7 +174,7 @@ function readysms_render_dashboard_page() {
             <p style="font-family: 'Yekan', sans-serif;">
                 <strong><?php esc_html_e('پیکربندی ناقص:', 'readysms'); ?></strong>
                 <?php printf(
-                    wp_kses_post(__('لطفاً برای فعال‌سازی کامل ورود با پیامک، <a href="%s">کلید API و کد پترن راه پیام</a> را در تنظیمات وارد کنید.', 'readysms')),
+                    wp_kses_post(__('لطفاً برای فعال‌سازی کامل ورود با پیامک، <a href="%s">کلید API و کد الگو راه پیام</a> را در تنظیمات وارد کنید.', 'readysms')),
                     esc_url(admin_url('admin.php?page=readysms-sms-settings'))
                 ); ?>
             </p>
@@ -213,7 +213,7 @@ function readysms_render_dashboard_page() {
             <div class="inside">
                 <p><strong><?php esc_html_e('برای استفاده کامل از امکانات افزونه ردی اس‌ام‌اس، مراحل زیر را دنبال کنید:', 'readysms'); ?></strong></p>
                 <ul style="list-style-type: decimal; padding-right: 20px; margin-top:10px;">
-                    <li><?php printf(wp_kses_post(__('<strong>تنظیمات پیامک:</strong> به بخش <a href="%s">تنظیمات پیامک</a> بروید و اطلاعات حساب کاربری خود در سامانه راه پیام (کلید API، شماره ارسال (اختیاری)، طول کد OTP و کد پترن OTP) را وارد نمایید.', 'readysms')), esc_url(admin_url('admin.php?page=readysms-sms-settings'))); ?></li>
+                    <li><?php printf(wp_kses_post(__('<strong>تنظیمات پیامک:</strong> به بخش <a href="%s">تنظیمات پیامک</a> بروید و اطلاعات حساب کاربری خود در سامانه راه پیام (کلید API، شماره ارسال (اختیاری)، طول کد OTP و کد الگو OTP) را وارد نمایید.', 'readysms')), esc_url(admin_url('admin.php?page=readysms-sms-settings'))); ?></li>
                     <li><?php printf(wp_kses_post(__('<strong>تست API:</strong> پس از وارد کردن اطلاعات، از بخش <a href="%s">تست API</a> برای اطمینان از صحت عملکرد اتصال به راه پیام استفاده کنید.', 'readysms')), esc_url(admin_url('admin.php?page=readysms-api-test'))); ?></li>
                     <li><?php printf(wp_kses_post(__('<strong>ورود با گوگل (اختیاری):</strong> اگر مایل به استفاده از ورود با گوگل هستید، به بخش <a href="%s">تنظیمات گوگل</a> مراجعه کرده و شناسه‌های مربوط به پروژه گوگل خود را وارد کنید.', 'readysms')), esc_url(admin_url('admin.php?page=readysms-google-settings'))); ?></li>
                     <li><?php printf(wp_kses_post(__('<strong>استفاده از شورت‌کد:</strong> شورت‌کد %s را در هر برگه یا نوشته‌ای که می‌خواهید فرم ورود/ثبت‌نام نمایش داده شود، قرار دهید.', 'readysms')), '<code>[readysms_login_form]</code>'); ?></li>
@@ -303,14 +303,14 @@ function readysms_render_sms_settings_page() {
                     </td>
                 </tr>
                 <tr valign="top">
-                    <th scope="row"><label for="ready_sms_pattern_code"><?php esc_html_e('کد پترن OTP (templateID)', 'readysms'); ?></label></th>
+                    <th scope="row"><label for="ready_sms_pattern_code"><?php esc_html_e('کد الگو OTP (templateID)', 'readysms'); ?></label></th>
                     <td>
                         <input type="text" id="ready_sms_pattern_code" name="ready_sms_pattern_code" value="<?php echo esc_attr(get_option('ready_sms_pattern_code')); ?>" class="regular-text ltr-code" dir="ltr" required placeholder="12345">
                         <p class="description">
-                            <?php esc_html_e('کد پترن (الگو) که در سامانه راه پیام برای ارسال پیامک OTP ثبت کرده‌اید.', 'readysms'); ?>
-                            <?php esc_html_e('این پترن باید شامل یک پارامتر برای جایگذاری کد تایید باشد. مثال محتوای پترن در راه پیام:', 'readysms'); ?>
+                            <?php esc_html_e('کد الگو (الگو) که در سامانه راه پیام برای ارسال پیامک OTP ثبت کرده‌اید.', 'readysms'); ?>
+                            <?php esc_html_e('این الگو باید شامل یک پارامتر برای جایگذاری کد تایید باشد. مثال محتوای الگو در راه پیام:', 'readysms'); ?>
                             <div class="pattern-code-example" style="font-family: inherit; direction:rtl; text-align:right; white-space: pre-wrap; line-height: 1.8;"><code><?php
-                                echo esc_html__('بفرمائید کد تأیید: %param1%', 'readysms') . "\n"; // \n for new line
+                                echo esc_html__('بفرمائید کد تأیید: [param1]', 'readysms') . "\n"; // \n for new line
                                 echo esc_html(get_bloginfo('name')); // Site name
                             ?></code></div>
                              <p class="description"><?php esc_html_e('در مثال بالا، %param1% همان کد ورود تولید شده توسط افزونه خواهد بود.', 'readysms'); ?></p>
@@ -387,7 +387,7 @@ function readysms_render_google_settings_page() {
                 </tr>
             </table>
             <p class="mt-3">
-                <?php printf(wp_kses_post(__('اگر با نحوه دریافت شناسه‌های گوگل آشنا نیستید، <a href="%s" target="_blank">راهنمای کامل را در وب‌سایت ردی استودیو مطالعه کنید</a>.', 'readysms')), esc_url('https://readystudio.ir/blog/wordpress-google-login-setup/?utm_source=plugin_settings&utm_medium=link&utm_campaign=readysms')); ?>
+                <?php printf(wp_kses_post(__('اگر با نحوه دریافت شناسه‌های گوگل آشنا نیستید، <a href="%s" target="_blank">راهنمای کامل را در وب‌سایت ردی استودیو مطالعه کنید</a>.', 'readysms')), esc_url('https://readystudio.ir/wordpress-google-login-setup/?utm_source=plugin_settings&utm_medium=link&utm_campaign=readysms')); ?>
             </p>
              <div class="instruction-box google-instruction mt-3" style="border-color: #F56565; background-color: #FFF5F5; color: #C53030;">
                 <p><strong><?php esc_html_e('نکات مهم برای ورود با گوگل:', 'readysms'); ?></strong></p>
@@ -433,7 +433,7 @@ function readysms_render_api_test_page() {
         </div>
 
         <p><?php esc_html_e('در این بخش می‌توانید عملکرد APIهای مختلف سامانه راه پیام را با استفاده از تنظیمات ذخیره شده، آزمایش کنید.', 'readysms'); ?></p>
-        <p><?php printf(wp_kses_post(__('پیش از انجام تست، مطمئن شوید که <a href="%s">تنظیمات پیامک</a> (کلید API و کد پترن) را به درستی وارد و ذخیره کرده‌اید.', 'readysms')), esc_url(admin_url('admin.php?page=readysms-sms-settings'))); ?></p>
+        <p><?php printf(wp_kses_post(__('پیش از انجام تست، مطمئن شوید که <a href="%s">تنظیمات پیامک</a> (کلید API و کد الگو) را به درستی وارد و ذخیره کرده‌اید.', 'readysms')), esc_url(admin_url('admin.php?page=readysms-sms-settings'))); ?></p>
 
         <div class="postbox">
             <h2 class="hndle"><span><?php esc_html_e('1. تست ارسال و تایید OTP', 'readysms'); ?></span></h2>
@@ -481,10 +481,10 @@ function readysms_render_api_test_page() {
             <div class="inside">
                  <table class="form-table">
                     <tr valign="top">
-                        <th scope="row"><label for="admin_template_id_test"><?php esc_html_e('شناسه قالب (Template ID)', 'readysms'); ?></label></th>
+                        <th scope="row"><label for="admin_template_id_test"><?php esc_html_e('کد الگو (بزودی)', 'readysms'); ?></label></th>
                         <td>
-                            <input type="text" id="admin_template_id_test" placeholder="<?php esc_attr_e('کد پترن وارد شده در تنظیمات', 'readysms'); ?>" class="regular-text ltr-code" value="<?php echo esc_attr(get_option('ready_sms_pattern_code')); ?>" dir="ltr">
-                             <p class="description"><?php esc_html_e('شناسه قالبی که می‌خواهید اطلاعات آن را از راه پیام دریافت کنید. (معمولاً همان کد پترن OTP است)', 'readysms'); ?></p>
+                            <input type="text" id="admin_template_id_test" placeholder="<?php esc_attr_e('کد الگو وارد شده در تنظیمات', 'readysms'); ?>" class="regular-text ltr-code" value="<?php echo esc_attr(get_option('ready_sms_pattern_code')); ?>" dir="ltr">
+                             <p class="description"><?php esc_html_e('شناسه قالبی که می‌خواهید اطلاعات آن را از راه پیام دریافت کنید. (معمولاً همان کد الگو OTP است)', 'readysms'); ?></p>
                         </td>
                     </tr>
                 </table>
@@ -494,7 +494,7 @@ function readysms_render_api_test_page() {
         </div>
         
         <div class="postbox">
-            <h2 class="hndle"><span><?php esc_html_e('4. تست دریافت موجودی حساب', 'readysms'); ?></span></h2>
+            <h2 class="hndle"><span><?php esc_html_e('4. تست دریافت موجودی حساب (بزودی)', 'readysms'); ?></span></h2>
             <div class="inside">
                 <button type="button" id="admin_get_balance_button" class="button button-secondary"><?php esc_html_e('دریافت موجودی حساب راه پیام', 'readysms'); ?></button>
                 <div id="admin_balance_result" class="api-test-result" style="margin-top: 15px; display:none;"></div>
