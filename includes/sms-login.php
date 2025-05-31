@@ -1,5 +1,6 @@
 <?php
-// جلوگیری از دسترسی مستقیم
+// File: includes/sms-login.php
+
 if (!defined('ABSPATH')) {
     exit;
 }
@@ -8,52 +9,44 @@ if (!defined('ABSPATH')) {
  * ارسال کد تایید (OTP) به شماره تلفن با استفاده از API SEND سامانه راه پیام
  */
 function ready_sms_send_otp() {
-    // بررسی nonce برای امنیت
     check_ajax_referer('readysms-nonce', 'nonce');
 
     if (!isset($_POST['phone_number'])) {
-        wp_send_json_error('شماره تلفن وارد نشده است.');
+        wp_send_json_error(__('شماره تلفن وارد نشده است.', 'readysms'));
     }
 
-    // دریافت شماره تلفن و پاکسازی آن
     $phone = sanitize_text_field(wp_unslash($_POST['phone_number']));
-    // حذف تمامی کاراکترهای غیر عددی
     $phone = preg_replace('/[^0-9]/', '', $phone);
-    // در صورتی که شماره تلفن 11 رقمی نباشد (مثلاً 09123456789)، ارسال خطا
     if (!preg_match('/^09[0-9]{9}$/', $phone)) {
-        wp_send_json_error('شماره تلفن نامعتبر است. باید با 09 شروع شده و 11 رقم باشد.');
+        wp_send_json_error(__('شماره تلفن نامعتبر است. باید با 09 شروع شده و 11 رقم باشد.', 'readysms'));
     }
 
-    // در اینجا شماره تلفن را به فرمت بین‌المللی (+98) تبدیل می‌کنیم
     $international_phone = '+98' . substr($phone, 1);
-
-    // تولید کد OTP تصادفی (6 رقم)
     $otp = (string)wp_rand(100000, 999999);
 
-    // دریافت تنظیمات API از پایگاه داده
     $api_key = get_option('ready_sms_api_key');
-    $template_id = get_option('ready_sms_pattern_code'); // در اینجا از این فیلد به عنوان templateID استفاده می‌شود
-    $line_number = get_option('ready_sms_number'); // شماره ارسال (Provider)
-    $timer_duration = get_option('ready_sms_timer_duration', 120);
-
+    $template_id = get_option('ready_sms_pattern_code');
+    $line_number = get_option('ready_sms_number');
+    $timer_duration = (int)get_option('ready_sms_timer_duration', 120);
 
     if (empty($api_key) || empty($template_id)) {
-        wp_send_json_error('تنظیمات API ناقص است. لطفا کلید API و کد پترن را در پیشخوان تنظیم کنید.');
+        wp_send_json_error(__('تنظیمات API ناقص است. لطفا کلید API و کد پترن را در پیشخوان تنظیم کنید.', 'readysms'));
     }
 
-    // آماده‌سازی پارامترهای ارسال پیامک طبق نمونه API SEND
     $payload = [
         "mobile"     => $international_phone,
         "method"     => "sms",
         "templateID" => (int) $template_id,
-        "params"     => [$otp] // پارامترهای پترن، در اینجا فقط کد OTP
+        "params"     => [$otp]
     ];
-    // افزودن شماره ارسال اگر تنظیم شده باشد
     if (!empty($line_number)) {
         $payload["lineNumber"] = $line_number;
     }
 
-    $args = [
+    // Re-use the helper function if it's loaded, otherwise define a local version or include it.
+    // For simplicity here, we assume ready_msgway_api_request is available (e.g. loaded if admin, or duplicate if needed)
+    // However, for front-end, it's better to have the direct wp_remote_post call here to avoid admin-only helper dependencies
+     $args = [
         'headers'     => [
             'Content-Type' => 'application/json',
             'apiKey'       => $api_key,
@@ -61,45 +54,38 @@ function ready_sms_send_otp() {
         'body'        => json_encode($payload),
         'timeout'     => 30,
     ];
-
     $response = wp_remote_post('https://api.msgway.com/send', $args);
 
+
     if (is_wp_error($response)) {
-        error_log('Readysms: WP Error on sending OTP: ' . $response->get_error_message());
-        wp_send_json_error('ارسال پیامک با خطا مواجه شد. (WP Error)');
+        error_log('Readysms Front: WP Error on sending OTP: ' . $response->get_error_message());
+        wp_send_json_error(__('ارسال پیامک با خطا مواجه شد. (WP Error)', 'readysms'));
     }
 
     $http_code = wp_remote_retrieve_response_code($response);
     $body = json_decode(wp_remote_retrieve_body($response), true);
 
-    // بررسی موفقیت آمیز بودن ارسال پیامک بر اساس پاسخ API
-    // Msgway 'send' endpoint typically returns HTTP 200 or 201 on success,
-    // and a body containing OTPReferenceId.
     if (($http_code === 200 || $http_code === 201) && isset($body['OTPReferenceId'])) {
-        // ذخیره OTP به مدت مشخص (مثلاً 5 دقیقه) در transient (برای استفاده در تایید)
-        set_transient('ready_sms_otp_' . $phone, $otp, 5 * MINUTE_IN_SECONDS);
-        // Optionally, store OTPReferenceId if needed for status checks later, though not used in verify
-        // set_transient('ready_sms_otpref_' . $phone, $body['OTPReferenceId'], 5 * MINUTE_IN_SECONDS);
-
+        set_transient('readysms_otp_' . $phone, $otp, 5 * MINUTE_IN_SECONDS);
+        // OTPReferenceId is returned by Msgway, might be useful for logging/status checks but not for verification flow here.
         wp_send_json_success([
-            'message' => 'کد تایید ارسال شد.', 
-            'remaining_time' => (int)$timer_duration,
-            // 'otp_reference_id' => $body['OTPReferenceId'] // Optionally send to client
+            'message'        => __('کد تایید با موفقیت ارسال شد.', 'readysms'),
+            'remaining_time' => $timer_duration,
+            // 'otp_ref_id'  => $body['OTPReferenceId'] // Optional: if JS needs it
         ]);
     } else {
-        $error_message = 'خطای ناشناس در ارسال OTP.';
-        if (isset($body['message'])) { // Msgway often uses 'message' for errors
+        $error_message = __('خطای ناشناس در ارسال OTP از سمت راه پیام.', 'readysms');
+        if (isset($body['message'])) {
             $error_message = is_array($body['message']) ? implode(', ', $body['message']) : $body['message'];
-        } elseif (isset($body['Message'])) { // Some API responses might use 'Message'
+        } elseif (isset($body['Message'])) {
              $error_message = is_array($body['Message']) ? implode(', ', $body['Message']) : $body['Message'];
         } else if ($http_code >= 400) {
-            $error_message = 'خطای API راه پیام (کد: ' . $http_code . ')';
+            $error_message = sprintf(__('خطای API راه پیام (کد: %s)', 'readysms'), $http_code);
         }
-        error_log('Readysms: Error sending OTP - ' . $error_message . ' | HTTP Code: ' . $http_code . ' | Response: ' . wp_json_encode($body));
+        error_log('Readysms Front: Error sending OTP - ' . $error_message . ' | HTTP Code: ' . $http_code . ' | Response: ' . wp_json_encode($body));
         wp_send_json_error($error_message);
     }
-
-    wp_die(); // این دستور برای پایان دادن به اجرای AJAX ضروری است
+    wp_die();
 }
 add_action('wp_ajax_ready_sms_send_otp', 'ready_sms_send_otp');
 add_action('wp_ajax_nopriv_ready_sms_send_otp', 'ready_sms_send_otp');
@@ -108,36 +94,32 @@ add_action('wp_ajax_nopriv_ready_sms_send_otp', 'ready_sms_send_otp');
  * بررسی کد تایید دریافت شده (OTP) با استفاده از API Verify سامانه راه پیام
  */
 function ready_sms_verify_otp() {
-    // بررسی nonce جهت امنیت
     check_ajax_referer('readysms-nonce', 'nonce');
 
-    if (!isset($_POST['phone_number'], $_POST['otp_code'], $_POST['redirect_link'])) {
-        wp_send_json_error('اطلاعات مورد نیاز (شماره تلفن، کد تایید، لینک ریدایرکت) وارد نشده است.');
+    if (!isset($_POST['phone_number'], $_POST['otp_code'])) { // redirect_link is expected by JS
+        wp_send_json_error(__('اطلاعات مورد نیاز (شماره تلفن، کد تایید) وارد نشده است.', 'readysms'));
     }
 
     $phone = sanitize_text_field(wp_unslash($_POST['phone_number']));
     $phone = preg_replace('/[^0-9]/', '', $phone);
     if (!preg_match('/^09[0-9]{9}$/', $phone)) {
-        wp_send_json_error('شماره تلفن نامعتبر است.');
+        wp_send_json_error(__('شماره تلفن نامعتبر است.', 'readysms'));
     }
 
-    // تبدیل شماره تلفن به فرمت بین‌المللی
     $international_phone = '+98' . substr($phone, 1);
     $otp_code = sanitize_text_field(wp_unslash($_POST['otp_code']));
-    $redirect_link = !empty($_POST['redirect_link']) ? esc_url_raw(wp_unslash($_POST['redirect_link'])) : home_url();
+    $redirect_link = isset($_POST['redirect_link']) ? esc_url_raw(wp_unslash($_POST['redirect_link'])) : home_url();
 
-    // دریافت تنظیمات API
+
     $api_key = get_option('ready_sms_api_key');
     if (empty($api_key)) {
-        wp_send_json_error('تنظیمات API پیامک یافت نشد.');
+        wp_send_json_error(__('تنظیمات API پیامک یافت نشد.', 'readysms'));
     }
 
-    // آماده‌سازی پارامترهای ارسال برای API Verify
     $payload = [
         "OTP"    => $otp_code,
         "mobile" => $international_phone,
     ];
-
     $args = [
         'headers' => [
             'Content-Type' => 'application/json',
@@ -146,68 +128,59 @@ function ready_sms_verify_otp() {
         'body'    => json_encode($payload),
         'timeout' => 30,
     ];
-
-    // استفاده از endpoint API Verify
     $response = wp_remote_post('https://api.msgway.com/otp/verify', $args);
 
     if (is_wp_error($response)) {
-        error_log('Readysms: WP Error on verifying OTP: ' . $response->get_error_message());
-        wp_send_json_error('تایید OTP با خطا مواجه شد. (WP Error)');
+        error_log('Readysms Front: WP Error on verifying OTP: ' . $response->get_error_message());
+        wp_send_json_error(__('تایید OTP با خطا مواجه شد. (WP Error)', 'readysms'));
     }
 
     $http_code = wp_remote_retrieve_response_code($response);
     $body = json_decode(wp_remote_retrieve_body($response), true);
 
-    // بررسی موفقیت آمیز بودن تایید OTP بر اساس پاسخ دریافت شده
-    // Msgway SimpleVerifyOTP.php example: status: 1 and message: "Verified" for success.
     if ($http_code === 200 && isset($body['status']) && $body['status'] == 1 && isset($body['message']) && $body['message'] == "Verified") {
-        // حذف transient کد OTP
-        delete_transient('ready_sms_otp_' . $phone);
-        // delete_transient('ready_sms_otpref_' . $phone); // If you stored it
+        delete_transient('readysms_otp_' . $phone);
 
-        // ایجاد یا دریافت کاربر بر اساس شماره تلفن، سپس ورود به سیستم
-        $user = get_user_by('login', $phone); // Using phone number as login username
+        $user = get_user_by('login', $phone);
         if (!$user) {
-            // If user does not exist, create one.
-            // You might want to ensure the phone number isn't already tied to another email if using email for uniqueness.
-            // Using phone as username, and a dummy email.
-            $email = $phone . '@' . wp_parse_url(home_url(), PHP_URL_HOST); // More unique dummy email
-            if (email_exists($email)) { // If dummy email exists, append random numbers
-                $email = $phone . '_' . wp_rand(100,999) . '@' . wp_parse_url(home_url(), PHP_URL_HOST);
+            $email_host = wp_parse_url(home_url(), PHP_URL_HOST);
+            if (!$email_host) $email_host = 'example.com'; // Fallback host
+            $email = $phone . '@' . $email_host;
+            if (email_exists($email)) {
+                $email = $phone . '_' . wp_rand(100,999) . '@' . $email_host;
             }
 
             $user_id = wp_create_user($phone, wp_generate_password(), $email);
             if (is_wp_error($user_id)) {
-                wp_send_json_error('خطا در ایجاد کاربر: ' . $user_id->get_error_message());
+                wp_send_json_error(sprintf(__('خطا در ایجاد کاربر: %s', 'readysms'), $user_id->get_error_message()));
             }
-            // Assign role
-            $role = class_exists('WooCommerce') ? 'customer' : 'subscriber';
+            $role = class_exists('WooCommerce') ? 'customer' : get_option('default_role', 'subscriber');
             wp_update_user(['ID' => $user_id, 'role' => $role]);
             $user = get_user_by('id', $user_id);
         }
 
-        if ($user) {
+        if ($user && !is_wp_error($user)) {
             wp_set_current_user($user->ID, $user->user_login);
-            wp_set_auth_cookie($user->ID, true); // true for 'remember me'
-            do_action('wp_login', $user->user_login, $user); // Hook for other plugins
-            wp_send_json_success(['redirect' => $redirect_link]);
+            wp_set_auth_cookie($user->ID, true);
+            do_action('wp_login', $user->user_login, $user);
+            wp_send_json_success(['redirect_url' => $redirect_link]); // JS expects redirect_url
         } else {
-            wp_send_json_error('خطا در ورود کاربر پس از تایید.');
+            wp_send_json_error(__('خطا در ورود کاربر پس از تایید.', 'readysms'));
         }
         
     } else {
-        $error_message = 'کد تایید نامعتبر است.';
+        $error_message = __('کد تایید نامعتبر است یا خطای API.', 'readysms');
         if (isset($body['message'])) {
             $error_message = is_array($body['message']) ? implode(', ', $body['message']) : $body['message'];
         } elseif (isset($body['Message'])) {
              $error_message = is_array($body['Message']) ? implode(', ', $body['Message']) : $body['Message'];
         } else if ($http_code >= 400) {
-             $error_message = 'خطای API راه پیام در تایید کد (کد: ' . $http_code . ')';
+             $error_message = sprintf(__('خطای API راه پیام در تایید کد (کد: %s)', 'readysms'), $http_code);
         }
-        error_log('Readysms: Error verifying OTP - ' . $error_message . ' | HTTP Code: ' . $http_code . ' | Response: ' . wp_json_encode($body));
+        error_log('Readysms Front: Error verifying OTP - ' . $error_message . ' | HTTP Code: ' . $http_code . ' | Response: ' . wp_json_encode($body));
         wp_send_json_error($error_message);
     }
-    wp_die(); // این دستور برای پایان دادن به اجرای AJAX ضروری است
+    wp_die();
 }
 add_action('wp_ajax_ready_sms_verify_otp', 'ready_sms_verify_otp');
 add_action('wp_ajax_nopriv_ready_sms_verify_otp', 'ready_sms_verify_otp');
