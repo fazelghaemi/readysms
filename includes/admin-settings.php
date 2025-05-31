@@ -150,11 +150,21 @@ function readysms_register_settings() {
     register_setting('readysms_sms_options_group', 'ready_sms_api_key', ['sanitize_callback' => 'sanitize_text_field', 'default' => '']);
     register_setting('readysms_sms_options_group', 'ready_sms_number', ['sanitize_callback' => 'sanitize_text_field', 'default' => '']);
     register_setting('readysms_sms_options_group', 'ready_sms_pattern_code', ['sanitize_callback' => 'sanitize_text_field', 'default' => '']);
-    register_setting('readysms_sms_options_group', 'ready_sms_otp_length', ['sanitize_callback' => 'readysms_sanitize_otp_length', 'default' => 6, 'type' => 'integer']);
-    // تغییر تایمر ارسال مجدد کد (مورد 3)
-    register_setting('readysms_sms_options_group', 'ready_sms_resend_timer', ['sanitize_callback' => 'readysms_sanitize_resend_timer', 'default' => 120, 'type' => 'integer']);
-    // تنظیم کد کشور (مورد 4)
-    register_setting('readysms_sms_options_group', 'ready_sms_country_code_mode', ['sanitize_callback' => 'sanitize_text_field', 'default' => 'iran_only']);
+    register_setting('readysms_sms_options_group', 'ready_sms_otp_length', [
+        'sanitize_callback' => 'readysms_sanitize_otp_length',
+        'default'           => 6,
+        'type'              => 'integer'
+    ]);
+    register_setting('readysms_sms_options_group', 'ready_sms_resend_timer', [
+        'sanitize_callback' => 'readysms_sanitize_resend_timer',
+        'default'           => 120,
+        'type'              => 'integer'
+    ]);
+    register_setting('readysms_sms_options_group', 'ready_sms_country_code_mode', [
+        'sanitize_callback' => 'sanitize_text_field',
+        'default'           => 'iran_only',
+        'type'              => 'string' // اضافه کردن type
+    ]);
 
 
     // Google Settings (گروه قبلی)
@@ -162,16 +172,35 @@ function readysms_register_settings() {
     register_setting('readysms_google_options_group', 'ready_google_client_secret', ['sanitize_callback' => 'sanitize_text_field', 'default' => '']);
 
     // Form Settings (گروه جدید - مورد 2)
-    register_setting('readysms_form_options_group', 'ready_form_logo_url', ['sanitize_callback' => 'esc_url_raw', 'default' => '']);
+    register_setting('readysms_form_options_group', 'ready_form_logo_url', [
+        'sanitize_callback' => 'esc_url_raw',
+        'default'           => '',
+        'type'              => 'string' // اضافه کردن type
+    ]);
 
-    // Redirect Settings (گروه جدید - مورد 1)
-    register_setting('readysms_redirect_options_group', 'ready_redirect_after_login', ['sanitize_callback' => 'esc_url_raw', 'default' => '']);
-    register_setting('readysms_redirect_after_register', ['sanitize_callback' => 'esc_url_raw', 'default' => '']); // معمولا مشابه لاگین یا صفحه خاص
-    register_setting('readysms_redirect_after_logout', ['sanitize_callback' => 'esc_url_raw', 'default' => '']);
-    register_setting('readysms_redirect_my_account_link', ['sanitize_callback' => 'esc_url_raw', 'default' => '']); // لینک صفحه حساب کاربری
-    // redirect_forgot_password نیاز به بررسی بیشتر دارد چون افزونه این قابلیت را مستقیما ندارد
+    // Redirect Settings (گروه جدید - مورد 1) - اصلاح این بخش
+    register_setting('readysms_redirect_options_group', 'ready_redirect_after_login', [
+        'sanitize_callback' => 'esc_url_raw',
+        'default'           => '',
+        'type'              => 'string' // اضافه کردن type
+    ]);
+    register_setting('readysms_redirect_options_group', 'ready_redirect_after_register', [
+        'sanitize_callback' => 'esc_url_raw',
+        'default'           => '',
+        'type'              => 'string' // اضافه کردن type
+    ]);
+    register_setting('readysms_redirect_options_group', 'ready_redirect_after_logout', [
+        'sanitize_callback' => 'esc_url_raw',
+        'default'           => '',
+        'type'              => 'string' // اضافه کردن type
+    ]);
+    register_setting('readysms_redirect_options_group', 'ready_redirect_my_account_link', [
+        'sanitize_callback' => 'esc_url_raw',
+        'default'           => '',
+        'type'              => 'string' // اضافه کردن type
+    ]);
 }
-add_action('admin_init', 'readysms_register_settings');
+// add_action('admin_init', 'readysms_register_settings'); // این خط باید از قبل در فایل شما باشد و تغییر نکند.
 
 // تابع اعتبارسنجی برای تایمر ارسال مجدد
 function readysms_sanitize_resend_timer($input) {
