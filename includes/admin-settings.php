@@ -19,8 +19,6 @@ function readysms_enqueue_admin_assets($hook_suffix) {
     foreach ($allowed_page_slugs_for_query as $slug) {
         if ($slug !== $plugin_page_slug_base) {
             $allowed_hooks[] = $plugin_page_slug_base . '_page_' . $slug;
-            // Add potential translated hook suffix if menu titles are translated by WordPress
-            // This can be complex; a simpler check on $_GET['page'] is a fallback
         }
     }
     
@@ -71,7 +69,7 @@ function readysms_enqueue_admin_assets($hook_suffix) {
         'verify_otp_btn_text'     => __('بررسی کد OTP', 'readysms'),
         'check_status_btn_text'   => __('بررسی وضعیت', 'readysms'),
         'get_template_btn_text'   => __('دریافت اطلاعات قالب', 'readysms'),
-        'get_balance_btn_text'    => __('دریافت موجودی حساب', 'readysms'), // متن دکمه دریافت موجودی
+        'get_balance_btn_text'    => __('دریافت موجودی حساب', 'readysms'),
         'uploader_title'          => __('انتخاب یا آپلود لوگو', 'readysms'),
         'uploader_button_text'    => __('استفاده از این لوگو', 'readysms'),
     ));
@@ -161,6 +159,7 @@ function readysms_register_settings() {
     register_setting('readysms_sms_options_group', 'ready_sms_otp_length', ['sanitize_callback' => 'readysms_sanitize_otp_length', 'default' => 6, 'type' => 'integer']);
     register_setting('readysms_sms_options_group', 'ready_sms_resend_timer', ['sanitize_callback' => 'readysms_sanitize_resend_timer', 'default' => 120, 'type' => 'integer']);
     register_setting('readysms_sms_options_group', 'ready_sms_country_code_mode', ['sanitize_callback' => 'sanitize_text_field', 'default' => 'iran_only', 'type' => 'string']);
+    register_setting('readysms_sms_options_group', 'ready_sms_send_method', ['sanitize_callback' => 'sanitize_text_field', 'default' => 'sms', 'type' => 'string']); // گزینه روش ارسال
 
     // Google Settings
     register_setting('readysms_google_options_group', 'ready_google_client_id', ['sanitize_callback' => 'sanitize_text_field', 'default' => '', 'type' => 'string']);
@@ -191,7 +190,7 @@ function readysms_sanitize_otp_length($input) {
  * Sanitize callback for Resend Timer.
  */
 function readysms_sanitize_resend_timer($input) {
-    $allowed_values = [30, 60, 120, 180, 240]; // 190 به 180 و 240 تغییر کرد برای استاندارد بودن بیشتر
+    $allowed_values = [30, 60, 120, 180, 240];
     $input = absint($input);
     if (in_array($input, $allowed_values, true)) {
         return $input;
@@ -233,9 +232,8 @@ function readysms_render_admin_nav_tabs($current_page_slug = 'readysms-settings'
     ];
     echo '<div class="dokme-container" style="margin:30px 0 20px;">';
     foreach ($tabs as $slug => $title) {
-        // Ensure current page slug detection is robust
-        $active_class = ($current_page_slug === $slug || ($slug === 'readysms-settings' && empty($current_page_slug))) ? 'active' : '';
-        if ($slug === 'readysms-settings' && $current_page_slug === 'readysms-settings') $active_class = 'active'; // Ensure main dashboard is active when its slug matches
+        $active_class = ($current_page_slug === $slug || ($slug === 'readysms-settings' && empty($current_page_slug) && $current_page_slug !== false )) ? 'active' : '';
+        if ($slug === 'readysms-settings' && ($current_page_slug === 'readysms-settings' || empty($current_page_slug))) $active_class = 'active';
 
         echo '<div class="dokme ' . esc_attr($active_class) . '"><a href="' . esc_url(admin_url('admin.php?page=' . $slug)) . '">' . esc_html($title) . '</a></div>';
     }
@@ -280,7 +278,7 @@ function readysms_render_dashboard_page() {
             <div class="inside">
                 <p><strong><?php esc_html_e('برای استفاده کامل از امکانات افزونه ردی اس‌ام‌اس، مراحل زیر را دنبال کنید:', 'readysms'); ?></strong></p>
                 <ul style="list-style-type: decimal; padding-right: 20px; margin-top:10px;">
-                    <li><?php printf(wp_kses_post(__('<strong>تنظیمات پیامک:</strong> به بخش <a href="%s">تنظیمات پیامک</a> بروید و اطلاعات حساب کاربری خود در سامانه راه پیام (کلید API، شماره ارسال (اختیاری)، طول کد OTP و کد پترن OTP) را وارد نمایید.', 'readysms')), esc_url(admin_url('admin.php?page=readysms-sms-settings'))); ?></li>
+                    <li><?php printf(wp_kses_post(__('<strong>تنظیمات پیامک:</strong> به بخش <a href="%s">تنظیمات پیامک</a> بروید و اطلاعات حساب کاربری خود در سامانه راه پیام (کلید API، شماره ارسال (اختیاری)، طول کد OTP، روش ارسال و کد پترن OTP) را وارد نمایید.', 'readysms')), esc_url(admin_url('admin.php?page=readysms-sms-settings'))); ?></li>
                      <li><?php printf(wp_kses_post(__('<strong>تنظیمات فرم و تغییر مسیر:</strong> از بخش‌های <a href="%1$s">تنظیمات فرم</a> (برای لوگو) و <a href="%2$s">تغییر مسیرها</a> برای سفارشی‌سازی بیشتر استفاده کنید.', 'readysms')), esc_url(admin_url('admin.php?page=readysms-form-settings')), esc_url(admin_url('admin.php?page=readysms-redirect-settings'))); ?></li>
                     <li><?php printf(wp_kses_post(__('<strong>تست API:</strong> پس از وارد کردن اطلاعات، از بخش <a href="%s">تست API</a> برای اطمینان از صحت عملکرد اتصال به راه پیام استفاده کنید.', 'readysms')), esc_url(admin_url('admin.php?page=readysms-api-test'))); ?></li>
                     <li><?php printf(wp_kses_post(__('<strong>ورود با گوگل (اختیاری):</strong> اگر مایل به استفاده از ورود با گوگل هستید، به بخش <a href="%s">تنظیمات گوگل</a> مراجعه کرده و شناسه‌های مربوط به پروژه گوگل خود را وارد کنید.', 'readysms')), esc_url(admin_url('admin.php?page=readysms-google-settings'))); ?></li>
@@ -294,7 +292,7 @@ function readysms_render_dashboard_page() {
             <h2 class="hndle"><span><?php esc_html_e('درباره سامانه پیامکی راه پیام', 'readysms'); ?></span></h2>
             <div class="inside">
                 <p><?php esc_html_e('افزونه ردی اس‌ام‌اس برای ارسال پیامک‌های تاییدیه (OTP) از سرویس‌دهنده معتبر ایرانی، <strong>راه پیام (Msgway.com)</strong>، استفاده می‌کند.', 'readysms'); ?></p>
-                <p><?php esc_html_e('راه پیام با ارائه پنل کاربری ساده و API قدرتمند، امکان ارسال سریع و مطمئن پیامک را برای کسب‌وکارهای آنلاین فراهم می‌آورد.', 'readysms'); ?></p>
+                <p><?php esc_html_e('راه پیام با ارائه پنل کاربری ساده و API قدرتمند، امکان ارسال سریع و مطمئن پیامک و تماس صوتی را برای کسب‌وکارهای آنلاین فراهم می‌آورد.', 'readysms'); ?></p>
                 <p class="mt-3"><?php printf(wp_kses_post(__('برای ثبت نام در سامانه راه پیام، مشاهده تعرفه‌ها و دریافت کلید API، لطفاً از طریق لینک زیر اقدام نمایید: <br><a href="%s" target="_blank" class="button button-primary" style="margin-top:10px;">ثبت نام و ورود به پنل راه پیام</a>', 'readysms')), esc_url($msgway_affiliate_link)); ?></p>
             </div>
         </div>
@@ -349,15 +347,29 @@ function readysms_render_sms_settings_page() {
                             }
                             ?>
                         </select>
-                        <p class="description"><?php esc_html_e('تعداد ارقام کد تایید پیامکی که برای کاربر ارسال می‌شود (بین 4 تا 7 رقم).', 'readysms'); ?></p>
+                        <p class="description"><?php esc_html_e('تعداد ارقام کد تایید که برای کاربر ارسال می‌شود (بین 4 تا 7 رقم).', 'readysms'); ?></p>
                     </td>
                 </tr>
                 <tr valign="top">
-                    <th scope="row"><label for="ready_sms_pattern_code"><?php esc_html_e('کد پترن OTP (templateID)', 'readysms'); ?></label></th>
+                    <th scope="row"><label for="ready_sms_send_method"><?php esc_html_e('روش ارسال کد تایید', 'readysms'); ?></label></th>
                     <td>
-                        <input type="text" id="ready_sms_pattern_code" name="ready_sms_pattern_code" value="<?php echo esc_attr(get_option('ready_sms_pattern_code')); ?>" class="regular-text ltr-code" dir="ltr" required placeholder="12345">
+                        <select id="ready_sms_send_method" name="ready_sms_send_method" class="regular-text" style="max-width: 200px;">
+                            <?php $current_method = get_option('ready_sms_send_method', 'sms'); ?>
+                            <option value="sms" <?php selected($current_method, 'sms'); ?>><?php esc_html_e('پیامک (SMS)', 'readysms'); ?></option>
+                            <option value="ivr" <?php selected($current_method, 'ivr'); ?>><?php esc_html_e('تماس صوتی (IVR)', 'readysms'); ?></option>
+                        </select>
                         <p class="description">
-                            <?php esc_html_e('کد پترن (الگو) که در سامانه راه پیام برای ارسال پیامک OTP ثبت کرده‌اید.', 'readysms'); ?>
+                            <?php esc_html_e('روش ارسال کد تایید به کاربر را انتخاب کنید.', 'readysms'); ?><br>
+                            <?php esc_html_e('توجه: برای تماس صوتی، راه پیام از یک قالب صوتی ثابت (templateID: 2) استفاده می‌کند.', 'readysms'); ?>
+                        </p>
+                    </td>
+                </tr>
+                <tr valign="top">
+                    <th scope="row"><label for="ready_sms_pattern_code"><?php esc_html_e('کد پترن پیامک (templateID)', 'readysms'); ?></label></th>
+                    <td>
+                        <input type="text" id="ready_sms_pattern_code" name="ready_sms_pattern_code" value="<?php echo esc_attr(get_option('ready_sms_pattern_code')); ?>" class="regular-text ltr-code" dir="ltr" placeholder="<?php esc_attr_e('فقط برای روش پیامک (SMS) لازم است', 'readysms'); ?>">
+                        <p class="description">
+                            <?php esc_html_e('کد پترن (الگو) که در سامانه راه پیام برای ارسال پیامک OTP ثبت کرده‌اید (فقط در صورت انتخاب روش ارسال "پیامک" استفاده می‌شود).', 'readysms'); ?>
                             <?php esc_html_e('این پترن باید شامل یک پارامتر برای جایگذاری کد تایید باشد. مثال محتوای پترن در راه پیام:', 'readysms'); ?>
                             <div class="pattern-code-example" style="font-family: inherit; direction:rtl; text-align:right; white-space: pre-wrap; line-height: 1.8;"><code><?php
                                 echo esc_html('بفرمائید کد تأیید: %param1%') . "\n";
@@ -618,7 +630,9 @@ function readysms_render_api_test_page() {
                         <td><input type="text" id="admin_test_phone_number" placeholder="<?php esc_attr_e('مثال: 09123456789', 'readysms'); ?>" class="regular-text ltr-code" dir="ltr"></td>
                     </tr>
                 </table>
-                <button type="button" id="admin_send_test_otp_button" class="button button-primary"><?php esc_html_e('ارسال پیامک OTP آزمایشی', 'readysms'); ?></button>
+                <button type="button" id="admin_send_test_otp_button" class="button button-primary"><?php esc_html_e('ارسال پیامک/تماس OTP آزمایشی', 'readysms'); ?></button>
+                 <p class="description"><?php printf(esc_html__('کد آزمایشی بر اساس "روش ارسال کد" انتخاب شده در %s ارسال خواهد شد.', 'readysms'), '<a href="'.esc_url(admin_url('admin.php?page=readysms-sms-settings')).'">'.esc_html__('تنظیمات پیامک', 'readysms').'</a>'); ?></p>
+                
                 <div id="admin_verify_otp_section" style="display: none; margin-top: 25px; padding-top:20px; border-top: 1px dashed var(--rs-border-color);">
                     <table class="form-table" style="box-shadow:none; border:none; background:transparent;">
                         <tr valign="top" style="border-bottom:none;">
@@ -648,14 +662,14 @@ function readysms_render_api_test_page() {
             </div>
         </div>
         <div class="postbox">
-            <h2 class="hndle"><span><?php esc_html_e('3. تست دریافت اطلاعات قالب پیام', 'readysms'); ?></span></h2>
+            <h2 class="hndle"><span><?php esc_html_e('3. تست دریافت اطلاعات قالب پیام (مخصوص پیامک)', 'readysms'); ?></span></h2>
             <div class="inside">
                  <table class="form-table">
                     <tr valign="top">
                         <th scope="row"><label for="admin_template_id_test"><?php esc_html_e('شناسه قالب (Template ID)', 'readysms'); ?></label></th>
                         <td>
                             <input type="text" id="admin_template_id_test" placeholder="<?php esc_attr_e('کد پترن وارد شده در تنظیمات', 'readysms'); ?>" class="regular-text ltr-code" value="<?php echo esc_attr(get_option('ready_sms_pattern_code')); ?>" dir="ltr">
-                             <p class="description"><?php esc_html_e('شناسه قالبی که می‌خواهید اطلاعات آن را از راه پیام دریافت کنید. (معمولاً همان کد پترن OTP است)', 'readysms'); ?></p>
+                             <p class="description"><?php esc_html_e('شناسه قالبی که می‌خواهید اطلاعات آن را از راه پیام دریافت کنید (فقط برای پیامک).', 'readysms'); ?></p>
                         </td>
                     </tr>
                 </table>
@@ -663,7 +677,7 @@ function readysms_render_api_test_page() {
                 <div id="admin_template_result" class="api-test-result" style="margin-top: 15px; display:none;"></div>
             </div>
         </div>
-        </div>
+    </div>
     <?php
 }
 
