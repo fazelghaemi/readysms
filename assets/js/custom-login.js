@@ -2,12 +2,20 @@
 document.addEventListener('DOMContentLoaded', function () {
     const formContainer = document.getElementById('readysms-form-container');
     if (!formContainer) {
+        // console.warn('ReadySMS: Login form container not found.');
         return; 
     }
 
     if (typeof readyLoginAjax === 'undefined' || !readyLoginAjax.ajaxurl) {
         console.error('ReadySMS: Localization object (readyLoginAjax) or ajaxurl not found.');
-        // ... ( نمایش خطا مشابه قبل ) ...
+        const tempMsgArea = document.getElementById('readysms-message-area');
+        if(tempMsgArea) {
+            tempMsgArea.textContent = 'خطای اساسی در بارگذاری افزونه. با مدیر سایت تماس بگیرید.';
+            tempMsgArea.className = 'readysms-message error';
+            tempMsgArea.style.display = 'block';
+        } else {
+            alert('خطای اساسی در بارگذاری افزونه. با مدیر سایت تماس بگیرید.');
+        }
         return;
     }
 
@@ -26,10 +34,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const changePhoneLink = document.getElementById('readysms-change-phone-link');
 
     const redirectUrl = formContainer.dataset.redirectUrl || window.location.href;
+    const registerRedirectUrl = formContainer.dataset.registerRedirectUrl || redirectUrl; // Fallback to login redirect
     let timerInterval;
 
     const otpExpectedLength = parseInt(readyLoginAjax.otp_length, 10) || 6;
-    const currentCountryCodeMode = readyLoginAjax.country_code_mode || 'iran_only'; // 'iran_only' or 'all_countries'
+    const currentCountryCodeMode = readyLoginAjax.country_code_mode || 'iran_only';
 
     if (otpInput) {
         let placeholderText = otpExpectedLength + ' ' + (readyLoginAjax.digits_text || 'رقمی');
@@ -64,15 +73,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            // تغییر 5: اعتبارسنجی اولیه برای شماره موبایل
-            // این اعتبارسنجی می‌تواند ساده‌تر باشد و اعتبارسنجی دقیق‌تر در سمت سرور انجام شود.
-            // ^(\+?\d{1,4})?(09\d{9})$  یا  ^(09\d{9})$  یا  ^(\+989\d{9})$
-            // برای سادگی فعلی، اجازه می‌دهیم با + شروع شود یا با 09
             let isValidPhoneFormat = false;
             if (currentCountryCodeMode === 'iran_only') {
                 isValidPhoneFormat = /^(09\d{9})$/.test(phoneNumber) || /^(\+989\d{9})$/.test(phoneNumber);
-            } else { // all_countries
-                isValidPhoneFormat = /^\+?\d{7,15}$/.test(phoneNumber); // یک فرمت عمومی‌تر برای شماره‌های بین‌المللی
+            } else { 
+                isValidPhoneFormat = /^\+?\d{7,15}$/.test(phoneNumber);
             }
 
             if (!isValidPhoneFormat) {
@@ -89,7 +94,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
                 body: new URLSearchParams({
                     action: 'ready_sms_send_otp',
-                    phone_number: phoneNumber, // ارسال شماره همانطور که کاربر وارد کرده
+                    phone_number: phoneNumber,
                     nonce: readyLoginAjax.nonce,
                 }),
             })
@@ -105,7 +110,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 sendOtpButton.textContent = readyLoginAjax.send_otp_text;
                 if (data.success) {
                     showUserMessage(data.data.message, 'success');
-                    // تغییر 3: استفاده از timer_duration از localize
                     startOtpTimer(parseInt(readyLoginAjax.timer_duration, 10) || 120); 
                     if (smsStep1Form) smsStep1Form.style.display = 'none';
                     if (smsStep2Form) smsStep2Form.style.display = 'block';
@@ -123,7 +127,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    function startOtpTimer(duration) { // پارامتر duration از readyLoginAjax.timer_duration می‌آید
+    function startOtpTimer(duration) {
         let remainingTime = parseInt(duration, 10);
         if (sendOtpButton) sendOtpButton.disabled = true;
         
@@ -157,10 +161,99 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            const otpValidationRegex = new RegExp(`^\\d{<span class="math-inline">\{otpExpectedLength\}\}</span>`);
+            const otpValidationRegex = new RegExp(`^\\d{${otpExpectedLength}}$`);
             if (!otpValidationRegex.test(otpCodeByUser)) {
                 let dynamicOtpErrorMessage = (readyLoginAjax.error_otp_invalid_format || 'فرمت کد تایید صحیح نیست.');
                 dynamicOtpErrorMessage += ' (' + otpExpectedLength + ' ' + (readyLoginAjax.digits_text || 'رقمی') + ')';
                 showUserMessage(dynamicOtpErrorMessage, 'error');
                 
-                if
+                if (otpInput) {
+                    otpInput.focus();
+                    otpInput.select();
+                }
+                return;
+            }
+
+            verifyOtpButton.disabled = true;
+            verifyOtpButton.textContent = readyLoginAjax.verifying_otp;
+
+            // برای ریدایرکت، باید بدانیم آیا کاربر جدید است یا خیر. این در سمت سرور مشخص می‌شود.
+            // جاوااسکریپت یکی از لینک‌های ریدایرکت (مثلاً لینک کلی یا لینک لاگین) را به عنوان پارامتر ارسال می‌کند.
+            // سرور تصمیم می‌گیرد که اگر کاربر جدید بود، از ریدایرکت ثبت‌نام (اگر تنظیم شده) استفاده کند.
+            const finalRedirectLinkForAjax = formContainer.dataset.redirectUrl; // استفاده از لینک کلی که می‌تواند اولویت‌ها را داشته باشد
+
+
+            fetch(readyLoginAjax.ajaxurl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                body: new URLSearchParams({
+                    action: 'ready_sms_verify_otp',
+                    phone_number: phoneNumber,
+                    otp_code: otpCodeByUser,
+                    nonce: readyLoginAjax.nonce,
+                    redirect_link: finalRedirectLinkForAjax, 
+                }),
+            })
+            .then(response => {
+                 if (!response.ok) {
+                    return response.json().then(errData => Promise.reject(errData.data || readyLoginAjax.error_general + ' (V' + response.status + ')'))
+                                     .catch(() => Promise.reject(readyLoginAjax.error_general + ' (V' + response.status + ')'));
+                }
+                return response.json();
+            })
+            .then(data => {
+                verifyOtpButton.disabled = false;
+                verifyOtpButton.textContent = readyLoginAjax.verify_otp_text;
+                if (data.success && data.data.redirect_url) {
+                    showUserMessage('ورود موفقیت آمیز بود. در حال انتقال شما...', 'success');
+                    window.location.href = data.data.redirect_url;
+                } else {
+                    showUserMessage(data.data || readyLoginAjax.error_general, 'error');
+                    if (otpInput) {
+                        otpInput.focus();
+                        otpInput.select();
+                    }
+                }
+            })
+            .catch(errorText => {
+                console.error('Verify OTP Fetch Error:', errorText);
+                verifyOtpButton.disabled = false;
+                verifyOtpButton.textContent = readyLoginAjax.verify_otp_text;
+                showUserMessage(typeof errorText === 'string' ? errorText : readyLoginAjax.error_general, 'error');
+            });
+        });
+    }
+
+    if(changePhoneLink && smsStep1Form && smsStep2Form) {
+        changePhoneLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            clearUserMessage();
+            clearInterval(timerInterval);
+            if (timerDisplay) timerDisplay.style.display = 'none';
+            if (sendOtpButton) {
+                sendOtpButton.disabled = false;
+                sendOtpButton.textContent = readyLoginAjax.send_otp_text;
+            }
+            if (smsStep2Form) smsStep2Form.style.display = 'none';
+            if (smsStep1Form) smsStep1Form.style.display = 'block';
+            if (phoneNumberInput) phoneNumberInput.focus();
+        });
+    }
+    
+    if (otpInput) {
+        otpInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                if (verifyOtpButton && !verifyOtpButton.disabled) verifyOtpButton.click();
+            }
+        });
+    }
+    if (phoneNumberInput) {
+        phoneNumberInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                if (sendOtpButton && !sendOtpButton.disabled) sendOtpButton.click();
+            }
+        });
+    }
+}); // اطمینان از بسته شدن صحیح addEventListener 'DOMContentLoaded'
