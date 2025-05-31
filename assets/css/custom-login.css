@@ -179,3 +179,15 @@
 .readysms-logged-in-message a:hover {
     text-decoration: underline;
 }
+
+.readysms-form-logo {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.readysms-form-logo img {
+    max-width: 150px; /* یا هر اندازه‌ای که مناسب می‌دانید */
+    max-height: 75px; /* یا هر اندازه‌ای که مناسب می‌دانید */
+    width: auto;
+    height: auto;
+}
