@@ -15,7 +15,7 @@ function ready_sms_send_otp() {
     // 2. اعتبارسنجی شماره تلفن ورودی
     if (!isset($_POST['phone_number'])) {
         wp_send_json_error(__('شماره تلفن وارد نشده است.', 'readysms'));
-        return; // wp_send_json_error شامل wp_die() است.
+        return;
     }
     $phone = sanitize_text_field(wp_unslash($_POST['phone_number']));
     $phone = preg_replace('/[^0-9]/', '', $phone);
@@ -54,15 +54,14 @@ function ready_sms_send_otp() {
             'Content-Type' => 'application/json',
             'apiKey'       => $api_key,
         ],
-        'body'        => wp_json_encode($payload), // استفاده از wp_json_encode برای اطمینان از فرمت صحیح
-        'timeout'     => 30, // ثانیه
+        'body'        => wp_json_encode($payload),
+        'timeout'     => 30,
     ];
     $response = wp_remote_post('https://api.msgway.com/send', $args);
 
-    // 5. بررسی خطای اولیه در ارتباط (مثلاً خطای cURL وردپرس)
+    // 5. بررسی خطای اولیه در ارتباط
     if (is_wp_error($response)) {
         $wp_error_message = $response->get_error_message();
-        // لاگ کردن خطای وردپرس برای بررسی بیشتر
         error_log("Readysms (Send OTP) - WP_Error during wp_remote_post: " . $wp_error_message . " - Payload: " . wp_json_encode($payload));
         wp_send_json_error(sprintf(__('ارسال پیامک با خطای سیستمی وردپرس مواجه شد: %s. اگر مشکل ادامه داشت، با پشتیبانی تماس بگیرید.', 'readysms'), $wp_error_message));
         return;
@@ -71,49 +70,48 @@ function ready_sms_send_otp() {
     // 6. پردازش پاسخ دریافت شده از API راه پیام
     $http_code = wp_remote_retrieve_response_code($response);
     $raw_body_from_api = wp_remote_retrieve_body($response);
-    $decoded_body_as_array = json_decode($raw_body_from_api, true); // تلاش برای تبدیل پاسخ به آرایه PHP
+    $decoded_body_as_array = json_decode($raw_body_from_api, true);
 
-    // تعریف شرط موفقیت از دید افزونه: کد HTTP باید 200 یا 201 باشد، پاسخ باید آرایه JSON معتبر باشد و کلید OTPReferenceId موجود باشد.
+    // تعریف شرط موفقیت از دید افزونه: کد HTTP باید 200 یا 201 باشد، پاسخ باید آرایه JSON معتبر باشد,
+    // کلید referenceID موجود باشد و status برابر 'success' باشد.
     $is_plugin_considering_api_call_successful = ($http_code === 200 || $http_code === 201) &&
                                                  is_array($decoded_body_as_array) &&
-                                                 isset($decoded_body_as_array['OTPReferenceId']);
+                                                 isset($decoded_body_as_array['referenceID']) && // کلید صحیح بر اساس لاگ شما
+                                                 isset($decoded_body_as_array['status']) &&
+                                                 $decoded_body_as_array['status'] === 'success';
 
     if ($is_plugin_considering_api_call_successful) {
-        // عملیات موفقیت آمیز از دید افزونه
         set_transient('readysms_otp_' . $phone, $otp, 5 * MINUTE_IN_SECONDS);
         wp_send_json_success([
             'message'        => __('کد تایید با موفقیت ارسال شد.', 'readysms'),
             'remaining_time' => $timer_duration,
         ]);
     } else {
-        // عملیات از دید افزونه موفقیت آمیز نبوده (علیرغم اینکه پیامک ممکن است ارسال شده باشد)
-        $user_facing_error_message = __('خطای ناشناس در ارسال OTP از سمت راه پیام. لطفاً بررسی کنید پیامک به دستتان رسیده است.', 'readysms'); // پیام پیش‌فرض برای کاربر
+        $user_facing_error_message = __('خطای ناشناس در ارسال OTP از سمت راه پیام. لطفاً بررسی کنید پیامک به دستتان رسیده است.', 'readysms');
 
-        // تلاش برای استخراج پیام خطای دقیق‌تر از پاسخ API (اگر پاسخ JSON و دارای پیام خطا باشد)
         if (is_array($decoded_body_as_array)) {
             if (!empty($decoded_body_as_array['message'])) {
                 $user_facing_error_message = is_array($decoded_body_as_array['message']) ? implode('; ', $decoded_body_as_array['message']) : (string) $decoded_body_as_array['message'];
-            } elseif (!empty($decoded_body_as_array['Message'])) { // برخی API ها از 'Message' استفاده می‌کنند
+            } elseif (!empty($decoded_body_as_array['Message'])) {
                 $user_facing_error_message = is_array($decoded_body_as_array['Message']) ? implode('; ', $decoded_body_as_array['Message']) : (string) $decoded_body_as_array['Message'];
+            } elseif (isset($decoded_body_as_array['status']) && $decoded_body_as_array['status'] !== 'success' && !empty($decoded_body_as_array['error'])) {
+                $user_facing_error_message = (string) $decoded_body_as_array['error'];
             }
-        } elseif ($http_code >= 400) { // اگر پاسخ JSON نباشد ولی کد HTTP نشانگر خطا باشد
+        } elseif ($http_code >= 400) {
             $user_facing_error_message = sprintf(__('خطای API راه پیام (کد وضعیت: %s).', 'readysms'), $http_code);
         }
 
-        // لاگ کردن اطلاعات بسیار دقیق برای خطایابی توسط شما
         $log_data_for_debugging = [
             'UserMessageSent' => $user_facing_error_message,
             'HTTPStatusCode' => $http_code,
-            'RawResponseBody' => $raw_body_from_api, // پاسخ خام بسیار مهم است
-            'DecodedBodyAsArray' => $decoded_body_as_array, // ممکن است null باشد اگر پاسخ JSON نباشد
-            'PluginSuccessConditionMet' => $is_plugin_considering_api_call_successful // باید false باشد در این بلاک
+            'RawResponseBody' => $raw_body_from_api,
+            'DecodedBodyAsArray' => $decoded_body_as_array,
+            'PluginSuccessConditionMet' => $is_plugin_considering_api_call_successful // This would be false here
         ];
-        // استفاده از wp_json_encode برای لاگ کردن آرایه به صورت خوانا
         error_log("Readysms (Send OTP) - API Call Not Considered Successful By Plugin: " . wp_json_encode($log_data_for_debugging, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
         
         wp_send_json_error($user_facing_error_message);
     }
-    // wp_die(); // نیازی نیست، چون wp_send_json_success/error آن را فراخوانی می‌کنند.
 }
 add_action('wp_ajax_ready_sms_send_otp', 'ready_sms_send_otp');
 add_action('wp_ajax_nopriv_ready_sms_send_otp', 'ready_sms_send_otp');
@@ -173,12 +171,14 @@ function ready_sms_verify_otp() {
     $decoded_body_as_array_verify = json_decode($raw_body_from_api_verify, true);
 
     // شرط موفقیت برای تایید OTP بر اساس مستندات راه پیام (status: 1 و message: "Verified")
+    // برخی APIها ممکن است status را به صورت عددی (1) و برخی به صورت رشته ("1") برگردانند.
+    // استفاده از == به جای === برای status انعطاف‌پذیری بیشتری دارد اگر نوع داده قطعی نباشد.
     $is_otp_verification_successful = ($http_code === 200 &&
                                        is_array($decoded_body_as_array_verify) &&
                                        isset($decoded_body_as_array_verify['status']) &&
-                                       $decoded_body_as_array_verify['status'] == 1 && // یا === 1 اگر نوع داده همیشه integer باشد
+                                       $decoded_body_as_array_verify['status'] == 1 && // '==' is more flexible for "1" vs 1
                                        isset($decoded_body_as_array_verify['message']) &&
-                                       strtolower($decoded_body_as_array_verify['message']) == "verified");
+                                       strtolower($decoded_body_as_array_verify['message']) === "verified"); // strtolower for case-insensitivity
 
     if ($is_otp_verification_successful) {
         delete_transient('readysms_otp_' . $phone);
@@ -186,9 +186,9 @@ function ready_sms_verify_otp() {
         $user = get_user_by('login', $phone);
         if (!$user) {
             $email_host = wp_parse_url(home_url(), PHP_URL_HOST);
-            if (empty($email_host)) $email_host = 'example.com'; // هاست پیش‌فرض در صورت بروز مشکل
+            if (empty($email_host)) $email_host = 'example.com';
             
-            $base_email_user = preg_replace('/[^a-z0-9_]/i', '', $phone); // ایجاد نام کاربری ایمیل امن‌تر
+            $base_email_user = preg_replace('/[^a-z0-9_]/i', '', $phone);
             $email = $base_email_user . '@' . $email_host;
             
             if (email_exists($email)) {
@@ -207,8 +207,8 @@ function ready_sms_verify_otp() {
 
         if ($user && !is_wp_error($user)) {
             wp_set_current_user($user->ID, $user->user_login);
-            wp_set_auth_cookie($user->ID, true); // true برای "مرا به خاطر بسپار"
-            do_action('wp_login', $user->user_login, $user); // اجرای هوک ورود وردپرس
+            wp_set_auth_cookie($user->ID, true);
+            do_action('wp_login', $user->user_login, $user);
             wp_send_json_success(['redirect_url' => $redirect_link]);
         } else {
             wp_send_json_error(__('خطا در ورود یا یافتن اطلاعات کاربر پس از تایید OTP.', 'readysms'));
@@ -235,7 +235,6 @@ function ready_sms_verify_otp() {
         
         wp_send_json_error($user_facing_error_message_verify);
     }
-    // wp_die(); // نیازی نیست
 }
 add_action('wp_ajax_ready_sms_verify_otp', 'ready_sms_verify_otp');
 add_action('wp_ajax_nopriv_ready_sms_verify_otp', 'ready_sms_verify_otp');
