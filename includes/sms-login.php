@@ -35,7 +35,17 @@ function ready_sms_send_otp() {
 
     $line_number = get_option('ready_sms_number');
     $timer_duration = (int)get_option('ready_sms_timer_duration', 120);
-    $otp = (string)wp_rand(100000, 999999);
+    
+    // --- START OF OTP LENGTH CHANGE ---
+    $otp_length = (int)get_option('ready_sms_otp_length', 6); // دریافت طول کد از تنظیمات
+    if ($otp_length < 4 || $otp_length > 7) { // اطمینان از محدوده مجاز، هرچند تابع sanitize هم این کار را می‌کند
+        $otp_length = 6; // بازگشت به پیش‌فرض در صورت مقدار نامعتبر
+    }
+    $min_otp_val = pow(10, $otp_length - 1);
+    $max_otp_val = pow(10, $otp_length) - 1;
+    $otp = (string)wp_rand($min_otp_val, $max_otp_val); // تولید OTP با طول مشخص شده
+    // --- END OF OTP LENGTH CHANGE ---
+    
     $international_phone = '+98' . substr($phone, 1);
 
     $payload = [
@@ -72,11 +82,9 @@ function ready_sms_send_otp() {
     $raw_body_from_api = wp_remote_retrieve_body($response);
     $decoded_body_as_array = json_decode($raw_body_from_api, true);
 
-    // تعریف شرط موفقیت از دید افزونه: کد HTTP باید 200 یا 201 باشد، پاسخ باید آرایه JSON معتبر باشد,
-    // کلید referenceID موجود باشد و status برابر 'success' باشد.
     $is_plugin_considering_api_call_successful = ($http_code === 200 || $http_code === 201) &&
                                                  is_array($decoded_body_as_array) &&
-                                                 isset($decoded_body_as_array['referenceID']) && // کلید صحیح بر اساس لاگ شما
+                                                 isset($decoded_body_as_array['referenceID']) &&
                                                  isset($decoded_body_as_array['status']) &&
                                                  $decoded_body_as_array['status'] === 'success';
 
@@ -106,7 +114,7 @@ function ready_sms_send_otp() {
             'HTTPStatusCode' => $http_code,
             'RawResponseBody' => $raw_body_from_api,
             'DecodedBodyAsArray' => $decoded_body_as_array,
-            'PluginSuccessConditionMet' => $is_plugin_considering_api_call_successful // This would be false here
+            'PluginSuccessConditionMet' => $is_plugin_considering_api_call_successful
         ];
         error_log("Readysms (Send OTP) - API Call Not Considered Successful By Plugin: " . wp_json_encode($log_data_for_debugging, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
         
@@ -170,15 +178,12 @@ function ready_sms_verify_otp() {
     $raw_body_from_api_verify = wp_remote_retrieve_body($response);
     $decoded_body_as_array_verify = json_decode($raw_body_from_api_verify, true);
 
-    // شرط موفقیت برای تایید OTP بر اساس مستندات راه پیام (status: 1 و message: "Verified")
-    // برخی APIها ممکن است status را به صورت عددی (1) و برخی به صورت رشته ("1") برگردانند.
-    // استفاده از == به جای === برای status انعطاف‌پذیری بیشتری دارد اگر نوع داده قطعی نباشد.
     $is_otp_verification_successful = ($http_code === 200 &&
                                        is_array($decoded_body_as_array_verify) &&
                                        isset($decoded_body_as_array_verify['status']) &&
-                                       $decoded_body_as_array_verify['status'] == 1 && // '==' is more flexible for "1" vs 1
+                                       $decoded_body_as_array_verify['status'] == 1 && 
                                        isset($decoded_body_as_array_verify['message']) &&
-                                       strtolower($decoded_body_as_array_verify['message']) === "verified"); // strtolower for case-insensitivity
+                                       strtolower($decoded_body_as_array_verify['message']) === "verified");
 
     if ($is_otp_verification_successful) {
         delete_transient('readysms_otp_' . $phone);
