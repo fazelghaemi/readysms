@@ -2,7 +2,6 @@
 document.addEventListener('DOMContentLoaded', function () {
     const formContainer = document.getElementById('readysms-form-container');
     if (!formContainer) {
-        // console.warn('ReadySMS: Login form container not found.');
         return; // Exit if the main form container isn't on the page
     }
 
@@ -20,16 +19,24 @@ document.addEventListener('DOMContentLoaded', function () {
     const remainingTimeSpan = document.getElementById('readysms-remaining-time');
     const changePhoneLink = document.getElementById('readysms-change-phone-link');
 
-    const redirectUrl = formContainer.dataset.redirectUrl || window.location.href; // Default to current page if not set
+    const redirectUrl = formContainer.dataset.redirectUrl || window.location.href;
     let timerInterval;
+
+    // Update OTP input placeholder and maxlength based on localized otp_length
+    const otpLength = readyLoginAjax.otp_length || 6; // Default to 6 if not set
+    if (otpInput) {
+        otpInput.setAttribute('placeholder', otpLength + ' ' + 'رقمی');
+        otpInput.setAttribute('maxlength', otpLength);
+    }
+
 
     function showMessage(text, type = 'error') {
         if (messageArea) {
             messageArea.textContent = text;
-            messageArea.className = 'readysms-message ' + type; // 'success' or 'error'
+            messageArea.className = 'readysms-message ' + type;
             messageArea.style.display = 'block';
         } else {
-            alert(text); // Fallback if message area is somehow missing
+            alert(text); // Fallback
         }
     }
 
@@ -46,16 +53,17 @@ document.addEventListener('DOMContentLoaded', function () {
             const phoneNumber = phoneNumberInput.value.trim();
             if (!phoneNumber) {
                 showMessage(readyLoginAjax.error_phone, 'error');
+                phoneNumberInput.focus();
                 return;
             }
             if (!/^(09\d{9})$/.test(phoneNumber)) {
-                showMessage('قالب شماره موبایل صحیح نیست (مثال: 09123456789)', 'error');
+                showMessage(readyLoginAjax.error_phone, 'error'); // More generic phone error
+                phoneNumberInput.focus();
                 return;
             }
 
-
             sendOtpButton.disabled = true;
-            sendOtpButton.textContent = 'در حال ارسال...';
+            sendOtpButton.textContent = readyLoginAjax.sending_otp;
 
             fetch(readyLoginAjax.ajaxurl, {
                 method: 'POST',
@@ -66,50 +74,57 @@ document.addEventListener('DOMContentLoaded', function () {
                     nonce: readyLoginAjax.nonce,
                 }),
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) { // Check for non-2xx HTTP status codes
+                    // Try to parse error if server sent JSON error object for non-2xx
+                    return response.json().then(errData => {
+                        throw { success: false, data: errData.data || readyLoginAjax.error_general };
+                    }).catch(() => { // If not JSON, or other network error
+                        throw { success: false, data: readyLoginAjax.error_general + ' (Status: ' + response.status + ')'};
+                    });
+                }
+                return response.json();
+            })
             .then(data => {
                 sendOtpButton.disabled = false;
-                sendOtpButton.textContent = 'دریافت کد تایید';
+                sendOtpButton.textContent = readyLoginAjax.send_otp_text;
                 if (data.success) {
                     showMessage(data.data.message, 'success');
                     startTimer(data.data.remaining_time || readyLoginAjax.timer_duration);
                     if (smsStep1Form) smsStep1Form.style.display = 'none';
                     if (smsStep2Form) smsStep2Form.style.display = 'block';
-                    otpInput.focus();
+                    if (otpInput) otpInput.focus();
                 } else {
                     showMessage(data.data || readyLoginAjax.error_general, 'error');
                 }
             })
             .catch(error => {
-                console.error('Send OTP Error:', error);
+                console.error('Send OTP Fetch Error:', error);
                 sendOtpButton.disabled = false;
-                sendOtpButton.textContent = 'دریافت کد تایید';
-                showMessage(readyLoginAjax.error_general, 'error');
+                sendOtpButton.textContent = readyLoginAjax.send_otp_text;
+                showMessage(error.data || readyLoginAjax.error_general, 'error');
             });
         });
     }
 
     function startTimer(duration) {
         let remainingTime = parseInt(duration, 10);
-        if (sendOtpButton) sendOtpButton.disabled = true; // Keep it disabled during timer
+        if (sendOtpButton) sendOtpButton.disabled = true;
         
         if (timerDisplay && remainingTimeSpan) {
             timerDisplay.style.display = 'block';
             remainingTimeSpan.textContent = remainingTime;
         }
 
-        clearInterval(timerInterval); // Clear any existing timer
+        clearInterval(timerInterval);
         timerInterval = setInterval(() => {
             remainingTime--;
             if (remainingTimeSpan) remainingTimeSpan.textContent = remainingTime;
             
             if (remainingTime <= 0) {
                 clearInterval(timerInterval);
-                if (sendOtpButton) sendOtpButton.disabled = false; // Re-enable original send OTP button
+                if (sendOtpButton) sendOtpButton.disabled = false;
                 if (timerDisplay) timerDisplay.style.display = 'none';
-                // If using a separate resend button, enable it here.
-                // For now, we re-enable the main send button (which is hidden at this stage)
-                // or expect user to click "change number" to go back.
             }
         }, 1000);
     }
@@ -117,20 +132,27 @@ document.addEventListener('DOMContentLoaded', function () {
     if (verifyOtpButton) {
         verifyOtpButton.addEventListener('click', function () {
             clearMessage();
-            const phoneNumber = phoneNumberInput.value.trim(); // Assuming phone number is still in the input or stored
+            const phoneNumber = phoneNumberInput.value.trim();
             const otpCode = otpInput.value.trim();
             
             if (!otpCode) {
-                showMessage(readyLoginAjax.error_otp, 'error');
+                showMessage(readyLoginAjax.error_otp_empty, 'error');
+                if (otpInput) otpInput.focus();
                 return;
             }
-            if (!/^\d{6}$/.test(otpCode)) {
-                showMessage('کد تایید باید ۶ رقم باشد.', 'error');
+            // Validate OTP format based on dynamic length
+            const otpRegex = new RegExp(`^\\d{${otpLength}}$`);
+            if (!otpRegex.test(otpCode)) {
+                showMessage(readyLoginAjax.error_otp_invalid + ' (' + otpLength + ' ' + 'رقمی)', 'error');
+                if (otpInput) {
+                    otpInput.focus();
+                    otpInput.select();
+                }
                 return;
             }
 
             verifyOtpButton.disabled = true;
-            verifyOtpButton.textContent = 'در حال بررسی...';
+            verifyOtpButton.textContent = readyLoginAjax.verifying_otp;
 
             fetch(readyLoginAjax.ajaxurl, {
                 method: 'POST',
@@ -143,24 +165,35 @@ document.addEventListener('DOMContentLoaded', function () {
                     redirect_link: redirectUrl, 
                 }),
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(errData => {
+                        throw { success: false, data: errData.data || readyLoginAjax.error_general };
+                    }).catch(() => {
+                        throw { success: false, data: readyLoginAjax.error_general + ' (Status: ' + response.status + ')'};
+                    });
+                }
+                return response.json();
+            })
             .then(data => {
                 verifyOtpButton.disabled = false;
-                verifyOtpButton.textContent = 'ورود / ثبت نام';
+                verifyOtpButton.textContent = readyLoginAjax.verify_otp_text;
                 if (data.success && data.data.redirect_url) {
                     showMessage('ورود موفقیت آمیز بود. در حال انتقال...', 'success');
                     window.location.href = data.data.redirect_url;
                 } else {
                     showMessage(data.data || readyLoginAjax.error_general, 'error');
-                    otpInput.focus();
-                    otpInput.select();
+                    if (otpInput) {
+                        otpInput.focus();
+                        otpInput.select();
+                    }
                 }
             })
             .catch(error => {
-                console.error('Verify OTP Error:', error);
+                console.error('Verify OTP Fetch Error:', error);
                 verifyOtpButton.disabled = false;
-                verifyOtpButton.textContent = 'ورود / ثبت نام';
-                showMessage(readyLoginAjax.error_general, 'error');
+                verifyOtpButton.textContent = readyLoginAjax.verify_otp_text;
+                showMessage(error.data || readyLoginAjax.error_general, 'error');
             });
         });
     }
@@ -171,24 +204,25 @@ document.addEventListener('DOMContentLoaded', function () {
             clearMessage();
             clearInterval(timerInterval);
             if (timerDisplay) timerDisplay.style.display = 'none';
-            if (sendOtpButton) sendOtpButton.disabled = false; // Re-enable original send OTP button
-
-            smsStep2Form.style.display = 'none';
-            smsStep1Form.style.display = 'block';
-            phoneNumberInput.focus();
+            if (sendOtpButton) {
+                sendOtpButton.disabled = false;
+                sendOtpButton.textContent = readyLoginAjax.send_otp_text;
+            }
+            if (smsStep2Form) smsStep2Form.style.display = 'none';
+            if (smsStep1Form) smsStep1Form.style.display = 'block';
+            if (phoneNumberInput) phoneNumberInput.focus();
         });
     }
     
-    // Allow submitting OTP form with Enter key
     if (otpInput) {
         otpInput.addEventListener('keypress', function(event) {
             if (event.key === 'Enter') {
-                event.preventDefault(); // Prevent default form submission if it's part of a <form>
-                if (verifyOtpButton) verifyOtpButton.click();
+                event.preventDefault();
+                if (verifyOtpButton && !verifyOtpButton.disabled) verifyOtpButton.click();
             }
         });
     }
-     if (phoneNumberInput) {
+    if (phoneNumberInput) {
         phoneNumberInput.addEventListener('keypress', function(event) {
             if (event.key === 'Enter') {
                 event.preventDefault();
@@ -196,5 +230,4 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
-
 });
