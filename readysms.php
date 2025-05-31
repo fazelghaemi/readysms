@@ -38,32 +38,24 @@ require_once READYSMS_DIR . 'includes/admin-ajax-handlers.php';
  * Enqueue front-end CSS and JS for custom login functionality.
  */
 function readysms_enqueue_front_scripts() {
-    // اسکریپت‌ها و استایل‌ها فقط در صورتی که کاربر لاگین نکرده باشد یا در صفحه‌ای که شورت‌کد وجود دارد، بارگذاری شوند (بهینه‌سازی)
-    // این بهینه‌سازی نیاز به بررسی وجود شورت‌کد در محتوای صفحه دارد که کمی پیچیده‌تر است.
-    // برای سادگی، فعلاً در تمام صفحات فرانت‌اند بارگذاری می‌کنیم.
     if (!is_admin()) {
-        wp_enqueue_style(
-            'readysms-front-style',
-            READYSMS_URL . 'assets/css/custom-login.css',
-            array(),
-            READYSMS_VERSION
-        );
+        // ... (wp_enqueue_style) ...
         wp_enqueue_script(
-            'readysms-front-js', // تغییر نام handle برای وضوح بیشتر
+            'readysms-front-js',
             READYSMS_URL . 'assets/js/custom-login.js',
-            array('jquery'), // jquery به عنوان وابستگی
+            array('jquery'),
             READYSMS_VERSION,
-            true // بارگذاری در فوتر
+            true
         );
         wp_localize_script('readysms-front-js', 'readyLoginAjax', array(
             'ajaxurl'        => admin_url('admin-ajax.php'),
             'nonce'          => wp_create_nonce('readysms-nonce'),
             'timer_duration' => (int) get_option('ready_sms_timer_duration', 120),
-            'otp_length'     => (int) get_option('ready_sms_otp_length', 6), // ارسال طول کد OTP به جاوااسکریپت
+            'otp_length'     => (int) get_option('ready_sms_otp_length', 6), // *** این خط بسیار مهم است ***
             'error_general'  => __('خطا در ارتباط با سرور. لطفاً لحظاتی دیگر تلاش کنید.', 'readysms'),
             'error_phone'    => __('لطفاً شماره موبایل خود را به صورت صحیح وارد کنید.', 'readysms'),
             'error_otp_empty'=> __('لطفاً کد تایید دریافت شده را وارد کنید.', 'readysms'),
-            'error_otp_invalid' => __('فرمت کد تایید وارد شده صحیح نیست.', 'readysms'),
+            'error_otp_invalid_format' => __('فرمت کد تایید وارد شده صحیح نیست.', 'readysms'), // تغییر نام برای وضوح بیشتر
             'sending_otp'    => __('در حال ارسال کد...', 'readysms'),
             'verifying_otp'  => __('در حال بررسی کد...', 'readysms'),
             'send_otp_text'  => __('دریافت کد تایید', 'readysms'),
