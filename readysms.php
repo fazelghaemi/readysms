@@ -7,7 +7,7 @@
  * Author URI: https://readystudio.ir/
  * Plugin URI: https://readystudio.ir/readysms-plugin/
  * License: GPLv2 or later
- * License URI: https://readystudio.ir/readysms-plugin/#license
+ * License URI: https://readystudio.ir/readysms-plugin/licenses/
  * Text Domain: readysms
  * Domain Path: /languages
  */
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
 
-define('READYSMS_VERSION', '1.3.0'); // نسخه به‌روز شده
+define('READYSMS_VERSION', '1.3.1');
 define('READYSMS_DIR', plugin_dir_path(__FILE__));
 define('READYSMS_URL', plugin_dir_url(__FILE__));
 define('READYSMS_BASENAME', plugin_basename(__FILE__));
@@ -58,79 +58,79 @@ function readysms_enqueue_front_scripts() {
             'nonce'            => wp_create_nonce('readysms-nonce'),
             'timer_duration'   => (int) get_option('ready_sms_resend_timer', 120), // استفاده از گزینه جدید تایمر
             'otp_length'       => (int) get_option('ready_sms_otp_length', 6),
-            'country_code_mode'=> get_option('ready_sms_country_code_mode', 'iran_only'), // ارسال حالت کد کشور
+            'country_code_mode'=> get_option('ready_sms_country_code_mode', 'iran_only'),
             'error_general'    => __('خطا در ارتباط با سرور. لطفاً لحظاتی دیگر تلاش کنید.', 'readysms'),
-            'error_phone'      => __('لطفاً شماره موبایل خود را به صورت صحیح وارد کنید (مثال: 09123456789 یا +989123456789).', 'readysms'), // به‌روزرسانی پیام
+            'error_phone'      => __('لطفاً شماره موبایل خود را به صورت صحیح وارد کنید (مثال: 09123456789 یا +989123456789).', 'readysms'),
             'error_otp_empty'  => __('لطفاً کد تایید دریافت شده را وارد کنید.', 'readysms'),
             'error_otp_invalid_format' => __('فرمت کد تایید وارد شده صحیح نیست.', 'readysms'),
             'digits_text'      => __('رقمی', 'readysms'),
-            'sending_otp'      => __('در حال ارسال کد...', 'readysms'),
-            'verifying_otp'    => __('در حال بررسی کد...', 'readysms'),
-            'send_otp_text'    => __('دریافت کد تایید', 'readysms'),
-            'verify_otp_text'  => __('ورود / ثبت نام', 'readysms'),
+            'sending_otp'    => __('در حال ارسال کد...', 'readysms'),
+            'verifying_otp'  => __('در حال بررسی کد...', 'readysms'),
+            'send_otp_text'  => __('دریافت کد تایید', 'readysms'),
+            'verify_otp_text'=> __('ورود / ثبت نام', 'readysms'),
         ));
     }
 }
-        $custom_css = get_option('ready_custom_css');
-        if (!empty($custom_css)) {
-            wp_add_inline_style('readysms-front-style', wp_strip_all_tags($custom_css));
-        }
-        $custom_js = get_option('ready_custom_js');
-        if (!empty($custom_js)) {
-            wp_add_inline_script('readysms-front-js', wp_specialchars_decode($custom_js, ENT_QUOTES), 'after');
-        }
-    }
 add_action('wp_enqueue_scripts', 'readysms_enqueue_front_scripts');
 
 /**
  * Plugin activation hook.
+ * Adds necessary options to the database if they don't exist.
  */
 function readysms_activate() {
-    // Google Login Options
-    if (get_option('ready_google_client_id') === false) add_option('ready_google_client_id', '');
-    if (get_option('ready_google_client_secret') === false) add_option('ready_google_client_secret', '');
+    $options_to_add = [
+        'ready_google_client_id'        => '',
+        'ready_google_client_secret'    => '',
+        'ready_sms_api_key'             => '',
+        'ready_sms_number'              => '',
+        'ready_sms_pattern_code'        => '',
+        'ready_sms_otp_length'          => 6,
+        'ready_sms_resend_timer'        => 120,
+        'ready_sms_country_code_mode'   => 'iran_only',
+        'ready_sms_send_method'         => 'sms',
+        'ready_form_logo_url'           => '',
+        'ready_redirect_after_login'    => '',
+        'ready_redirect_after_register' => '',
+        'ready_redirect_after_logout'   => '',
+        'ready_redirect_my_account_link'=> '',
+        'ready_custom_css'              => '',
+        'ready_custom_js'               => ''
+    ];
 
-    // SMS Login Options
-    if (get_option('ready_sms_api_key') === false) add_option('ready_sms_api_key', '');
-    if (get_option('ready_sms_number') === false) add_option('ready_sms_number', '');
-    if (get_option('ready_sms_pattern_code') === false) add_option('ready_sms_pattern_code', '');
-    if (get_option('ready_sms_otp_length') === false) add_option('ready_sms_otp_length', 6);
-    if (get_option('ready_sms_resend_timer') === false) add_option('ready_sms_resend_timer', 120); // گزینه جدید تایمر ارسال مجدد
-    if (get_option('ready_sms_country_code_mode') === false) add_option('ready_sms_country_code_mode', 'iran_only'); // گزینه جدید حالت کد کشور
-
-    // Form Settings Options
-    if (get_option('ready_form_logo_url') === false) add_option('ready_form_logo_url', '');
-
-    // Redirect Options
-    if (get_option('ready_redirect_after_login') === false) add_option('ready_redirect_after_login', '');
-    if (get_option('ready_redirect_after_register') === false) add_option('ready_redirect_after_register', '');
-    if (get_option('ready_redirect_after_logout') === false) add_option('ready_redirect_after_logout', '');
-    if (get_option('ready_redirect_my_account_link') === false) add_option('ready_redirect_my_account_link', '');
+    foreach ($options_to_add as $option_name => $default_value) {
+        if (get_option($option_name) === false) {
+            add_option($option_name, $default_value);
+        }
+    }
 }
-    // ... (سایر add_option ها) ...
-    if (get_option('ready_custom_css') === false) {
-        add_option('ready_custom_css', '');
-    }
-    if (get_option('ready_custom_js') === false) {
-        add_option('ready_custom_js', '');
-    }
 register_activation_hook(__FILE__, 'readysms_activate');
 
 /**
  * Plugin deactivation hook.
+ * (Optional: Clean up options if desired by uncommenting)
  */
 function readysms_deactivate() {
-    // Optional: delete options on deactivation
+    // delete_option('ready_google_client_id');
+    // delete_option('ready_google_client_secret');
+    // delete_option('ready_sms_api_key');
+    // delete_option('ready_sms_number');
+    // delete_option('ready_sms_pattern_code');
+    // delete_option('ready_sms_otp_length');
     // delete_option('ready_sms_resend_timer');
     // delete_option('ready_sms_country_code_mode');
+    // delete_option('ready_sms_send_method');
     // delete_option('ready_form_logo_url');
     // delete_option('ready_redirect_after_login');
-    // ... and so on for other options
+    // delete_option('ready_redirect_after_register');
+    // delete_option('ready_redirect_after_logout');
+    // delete_option('ready_redirect_my_account_link');
+    // delete_option('ready_custom_css');
+    // delete_option('ready_custom_js');
 }
 register_deactivation_hook(__FILE__, 'readysms_deactivate');
 
 /**
- * Add settings link on plugin page.
+ * Add settings link on plugin page in WordPress admin.
  */
 function readysms_add_settings_link($links) {
     $settings_link_url = admin_url('admin.php?page=readysms-settings');
@@ -150,20 +150,54 @@ if (function_exists('plugin_basename')) {
 function readysms_custom_logout_redirect($logout_url, $redirect_to_calculated_by_wp, $user) {
     $custom_logout_url_from_settings = get_option('ready_redirect_after_logout');
     if (!empty($custom_logout_url_from_settings)) {
-        // Validate that it's a local URL or an allowed one to prevent open redirect vulnerabilities
-        $parsed_url = wp_parse_url($custom_logout_url_from_settings);
-        if (!empty($parsed_url['host']) && strtolower($parsed_url['host']) !== strtolower(wp_parse_url(home_url(), PHP_URL_HOST))) {
-            // If it's an external URL and you don't want to allow it, return default or home_url()
-            // For now, we assume admin enters valid URLs. esc_url_raw was used for saving.
-            return esc_url_raw($custom_logout_url_from_settings);
+        // اعتبارسنجی URL برای جلوگیری از آسیب‌پذیری Open Redirect
+        $parsed_custom_url = wp_parse_url($custom_logout_url_from_settings);
+        $parsed_home_url = wp_parse_url(home_url());
+
+        // اگر هاست URL سفارشی با هاست سایت یکی است یا URL نسبی است (بدون هاست)
+        if (empty($parsed_custom_url['host']) || (isset($parsed_custom_url['host'], $parsed_home_url['host']) && strtolower($parsed_custom_url['host']) === strtolower($parsed_home_url['host']))) {
+            return esc_url_raw(trim($custom_logout_url_from_settings));
+        } else {
+            // اگر URL خارجی است و نمی‌خواهید اجازه دهید، به صفحه اصلی یا URL پیش‌فرض وردپرس برگردانید
+            // برای امنیت بیشتر، تغییر مسیر به URLهای خارجی که توسط مدیر وارد شده‌اند، باید با احتیاط انجام شود.
+            // در اینجا فرض می‌کنیم مدیر URL معتبری وارد می‌کند، اما یک اعتبارسنجی قوی‌تر می‌تواند مفید باشد.
+             error_log("ReadySMS: Potential open redirect attempt in logout_redirect. Custom URL: " . $custom_logout_url_from_settings);
+             // return home_url('/'); // بازگشت به صفحه اصلی در صورت URL خارجی نامعتبر یا مشکوک
+             return esc_url_raw(trim($custom_logout_url_from_settings)); // فعلا به انتخاب مدیر اعتماد می‌کنیم
         }
-        return esc_url_raw(trim($custom_logout_url_from_settings));
     }
-    // If $redirect_to_calculated_by_wp is set (e.g., from a link ?redirect_to=...), WP uses that.
-    // If not, $logout_url might point to wp-login.php?loggedout=true.
-    // If you want to override WP's default when your setting is empty, you can return home_url() here.
-    return $logout_url; 
+    return $logout_url; // استفاده از رفتار پیش‌فرض وردپرس اگر تنظیم خاصی وجود ندارد
 }
-add_filter('logout_redirect', 'readysms_custom_logout_redirect', 20, 3); // Priority 20 to run after most defaults
+add_filter('logout_redirect', 'readysms_custom_logout_redirect', 20, 3);
+
+
+/**
+ * Load custom CSS and JS added by admin in tools section.
+ */
+function readysms_load_custom_codes() {
+    if (is_admin()) { // این کدها فقط برای فرانت‌اند هستند
+        return;
+    }
+
+    $custom_css = get_option('ready_custom_css');
+    if (!empty($custom_css)) {
+        // برای امنیت، می‌توان از wp_kses_css یا سایر روش‌های پاکسازی استفاده کرد،
+        // اما چون این کد توسط مدیر وارد می‌شود، فرض بر صحت آن است.
+        // wp_strip_all_tags می‌تواند برخی ساختارهای پیچیده CSS را خراب کند.
+        // برای حفظ کامل کد CSS کاربر، آن را مستقیماً اضافه می‌کنیم.
+        // مدیر مسئول امنیت کدی است که وارد می‌کند.
+        wp_register_style('readysms-custom-inline-css', false);
+        wp_enqueue_style('readysms-custom-inline-css');
+        wp_add_inline_style('readysms-custom-inline-css', $custom_css);
+    }
+
+    $custom_js = get_option('ready_custom_js');
+    if (!empty($custom_js)) {
+        // کد JS سفارشی پس از اسکریپت اصلی افزونه ('readysms-front-js') بارگذاری می‌شود.
+        // wp_specialchars_decode برای برگرداندن کاراکترهایی مانند <, > و & که ممکن است هنگام ذخیره تبدیل شده باشند.
+        wp_add_inline_script('readysms-front-js', wp_specialchars_decode($custom_js, ENT_QUOTES), 'after');
+    }
+}
+add_action('wp_enqueue_scripts', 'readysms_load_custom_codes', 99); // اجرای با اولویت پایین‌تر برای اطمینان از بارگذاری پس از استایل اصلی
 
 ?>
