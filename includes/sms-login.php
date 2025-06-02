@@ -135,6 +135,18 @@ function ready_sms_send_otp() {
     $api_key = get_option('ready_sms_api_key');
     $sms_template_id = get_option('ready_sms_pattern_code');
     $send_method = get_option('ready_sms_send_method', 'sms');
+        // --- START DEBUG LOGGING ---
+    error_log("ReadySMS Debug (Front-end Send OTP):");
+    error_log(" - Send Method Retrieved: " . $send_method);
+    error_log(" - SMS Template ID Retrieved (ready_sms_pattern_code): '" . $sms_template_id . "'");
+    error_log(" - Is SMS Template ID empty? : " . (empty($sms_template_id) ? 'YES' : 'NO'));
+    error_log(" - Is API Key empty? : " . (empty($api_key) ? 'YES' : 'NO'));
+    // --- END DEBUG LOGGING ---
+
+    if ($send_method === 'sms' && empty($sms_template_id)) {
+        wp_send_json_error(__('کد پترن پیامک در تنظیمات مشخص نشده است (برای ارسال پیامک لازم است).', 'readysms'));
+        return;
+    }
 
     if (empty($api_key) || ($send_method === 'sms' && empty($sms_template_id))) {
         wp_send_json_error(__('تنظیمات API (کلید یا کد پترن برای پیامک) ناقص است.', 'readysms'));
