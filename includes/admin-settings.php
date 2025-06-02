@@ -311,7 +311,7 @@ function readysms_render_dashboard_page() {
          <div class="postbox">
             <h2 class="hndle"><span><?php esc_html_e('درباره سامانه پیامکی راه پیام', 'readysms'); ?></span></h2>
             <div class="inside">
-                <p><?php esc_html_e('افزونه ردی اس‌ام‌اس برای ارسال پیامک‌های تاییدیه (OTP) از سرویس‌دهنده معتبر ایرانی، <strong>راه پیام (Msgway.com)</strong>، استفاده می‌کند.', 'readysms'); ?></p>
+                <p><?php esc_html_e('افزونه ردی اس‌ام‌اس برای ارسال پیام‌ها از سرویس‌دهنده معتبر و تخصصی راه پیام (Msgway.com)، استفاده می‌کند.', 'readysms'); ?></p>
                 <p><?php esc_html_e('راه پیام با ارائه پنل کاربری ساده و API قدرتمند، امکان ارسال سریع و مطمئن پیامک و تماس صوتی را برای کسب‌وکارهای آنلاین فراهم می‌آورد.', 'readysms'); ?></p>
                 <p class="mt-3"><?php printf(wp_kses_post(__('برای ثبت نام در سامانه راه پیام، مشاهده تعرفه‌ها و دریافت کلید API، لطفاً از طریق لینک زیر اقدام نمایید: <br><a href="%s" target="_blank" class="button button-primary" style="margin-top:10px;">ثبت نام و ورود به پنل راه پیام</a>', 'readysms')), esc_url($msgway_affiliate_link)); ?></p>
             </div>
@@ -392,10 +392,10 @@ function readysms_render_sms_settings_page() {
                             <?php esc_html_e('کد پترن (الگو) که در سامانه راه پیام برای ارسال پیامک OTP ثبت کرده‌اید (فقط در صورت انتخاب روش ارسال "پیامک" استفاده می‌شود).', 'readysms'); ?>
                             <?php esc_html_e('این پترن باید شامل یک پارامتر برای جایگذاری کد تایید باشد. مثال محتوای پترن در راه پیام:', 'readysms'); ?>
                             <div class="pattern-code-example" style="font-family: inherit; direction:rtl; text-align:right; white-space: pre-wrap; line-height: 1.8;"><code><?php
-                                echo esc_html('بفرمائید کد تأیید: %param1%') . "\n";
+                                echo esc_html('بفرمائید کد تأیید: [param1]') . "\n";
                                 echo esc_html(get_bloginfo('name'));
                             ?></code></div>
-                             <p class="description"><?php esc_html_e('در مثال بالا، %param1% همان کد ورود تولید شده توسط افزونه خواهد بود.', 'readysms'); ?></p>
+                             <p class="description"><?php esc_html_e('در مثال بالا، [param1] همان کد ورود تولید شده توسط افزونه خواهد بود.', 'readysms'); ?></p>
                         </p>
                     </td>
                 </tr>
@@ -479,7 +479,7 @@ function readysms_render_google_settings_page() {
                 </tr>
             </table>
             <p class="mt-3">
-                <?php printf(wp_kses_post(__('اگر با نحوه دریافت شناسه‌های گوگل آشنا نیستید، <a href="%s" target="_blank">راهنمای کامل را در وب‌سایت ردی استودیو مطالعه کنید</a>.', 'readysms')), esc_url('https://readystudio.ir/blog/wordpress-google-login-setup/?utm_source=plugin_settings&utm_medium=link&utm_campaign=readysms')); ?>
+                <?php printf(wp_kses_post(__('اگر با نحوه دریافت شناسه‌های گوگل آشنا نیستید، <a href="%s" target="_blank">راهنمای کامل را در وب‌سایت ردی استودیو مطالعه کنید</a>.', 'readysms')), esc_url('https://readystudio.ir/google-client-id-secret-guide-wordpress-login-registration/?utm_source=plugin_settings&utm_medium=link&utm_campaign=readysms')); ?>
             </p>
              <div class="instruction-box google-instruction mt-3" style="border-color: #F56565; background-color: #FFF5F5; color: #C53030;">
                 <p><strong><?php esc_html_e('نکات مهم برای ورود با گوگل:', 'readysms'); ?></strong></p>
