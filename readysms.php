@@ -2,12 +2,12 @@
 /**
  * Plugin Name: ReadySMS | ردی اس‌ام‌اس
  * Description: افزونه ورود و ثبت نام با پیامک و قابلیت جذاب ورود با گوگل در وردپرس با استفاده از سامانه راه پیام.
- * Version: 1.3.0 
+ * Version: 1.3.1
  * Author: Fazel Ghaemi
  * Author URI: https://readystudio.ir/
  * Plugin URI: https://readystudio.ir/readysms-plugin/
  * License: GPLv2 or later
- * License URI: https://readystudio.ir/readysms-plugin/licenses/
+ * License URI: https://readystudio.ir/readysms-plugin/#license
  * Text Domain: readysms
  * Domain Path: /languages
  */
