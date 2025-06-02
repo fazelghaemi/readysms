@@ -19,12 +19,18 @@ function readysms_enqueue_admin_assets($hook_suffix) {
     foreach ($allowed_page_slugs_for_query as $slug) {
         if ($slug !== $plugin_page_slug_base) {
             $allowed_hooks[] = $plugin_page_slug_base . '_page_' . $slug;
+            // For translated menu titles that might alter hook suffixes (less common with stable slugs)
+            // $translated_top_level_title = __('ردی اس‌ام‌اس', 'readysms');
+            // if (get_admin_page_title() === $translated_top_level_title) { // This check is not robust enough for all cases
+            //    $allowed_hooks[] = sanitize_title($translated_top_level_title) . '_page_' . $slug;
+            // }
         }
     }
     
     if (in_array($hook_suffix, $allowed_hooks)) {
         $load_assets = true;
     } else {
+        // Fallback check for page query param, as hook can sometimes vary
         $current_page_query = isset($_GET['page']) ? sanitize_text_field($_GET['page']) : '';
         if (in_array($current_page_query, $allowed_page_slugs_for_query)) {
             $load_assets = true;
@@ -35,6 +41,7 @@ function readysms_enqueue_admin_assets($hook_suffix) {
         return;
     }
 
+    // Enqueue WordPress media uploader scripts if on the relevant settings page
     $current_page_query_for_media = isset($_GET['page']) ? sanitize_text_field($_GET['page']) : '';
     if ($current_page_query_for_media === 'readysms-form-settings') {
         wp_enqueue_media();
@@ -48,7 +55,7 @@ function readysms_enqueue_admin_assets($hook_suffix) {
         'nonce'                   => wp_create_nonce('readysms-admin-nonce'),
         'send_test_otp_action'    => 'ready_admin_send_test_otp',
         'verify_test_otp_action'  => 'ready_admin_verify_test_otp',
-        'check_status_action'     => 'ready_admin_check_sms_status',
+        // 'check_status_action'  => 'ready_admin_check_sms_status', // حذف شد
         'get_template_action'     => 'ready_admin_get_template_info',
         'get_balance_action'      => 'ready_admin_get_balance',
         'export_users_action'     => 'readysms_export_users',
@@ -57,7 +64,7 @@ function readysms_enqueue_admin_assets($hook_suffix) {
         'msg_fill_phone'          => __('لطفا شماره تلفن را برای تست وارد کنید.', 'readysms'),
         'msg_fill_otp'            => __('لطفا کد OTP دریافتی را وارد کنید.', 'readysms'),
         'msg_fill_otp_len_invalid'=> __('فرمت کد OTP صحیح نیست.', 'readysms'),
-        'msg_fill_ref_id'         => __('لطفا شناسه مرجع را وارد کنید.', 'readysms'),
+        'msg_fill_ref_id'         => __('لطفا شناسه مرجع را وارد کنید.', 'readysms'), // دیگر استفاده نمی‌شود
         'msg_fill_template_id'    => __('لطفا شناسه قالب را وارد کنید.', 'readysms'),
         'msg_unexpected_error'    => __('یک خطای پیش‌بینی نشده رخ داد. کنسول مرورگر و لاگ خطای PHP را بررسی کنید.', 'readysms'),
         'exporting_users_text'    => __('در حال آماده‌سازی خروجی...', 'readysms'),
@@ -65,9 +72,9 @@ function readysms_enqueue_admin_assets($hook_suffix) {
         'sending_text'            => __('در حال ارسال...', 'readysms'),
         'verifying_text'          => __('در حال بررسی...', 'readysms'),
         'fetching_text'           => __('در حال دریافت...', 'readysms'),
-        'send_otp_btn_text'       => __('ارسال پیامک OTP آزمایشی', 'readysms'),
+        'send_otp_btn_text'       => __('ارسال پیامک/تماس OTP آزمایشی', 'readysms'),
         'verify_otp_btn_text'     => __('بررسی کد OTP', 'readysms'),
-        'check_status_btn_text'   => __('بررسی وضعیت', 'readysms'),
+        // 'check_status_btn_text'   => __('بررسی وضعیت', 'readysms'), // حذف شد
         'get_template_btn_text'   => __('دریافت اطلاعات قالب', 'readysms'),
         'get_balance_btn_text'    => __('دریافت موجودی حساب', 'readysms'),
         'uploader_title'          => __('انتخاب یا آپلود لوگو', 'readysms'),
@@ -94,7 +101,7 @@ function readysms_add_admin_menu() {
         __('داشبورد', 'readysms'),
         __('داشبورد', 'readysms'),
         'manage_options',
-        'readysms-settings',
+        'readysms-settings', // Same as parent slug to make it the default page
         'readysms_render_dashboard_page'
     );
     add_submenu_page(
@@ -152,27 +159,31 @@ add_action('admin_menu', 'readysms_add_admin_menu');
  * Register plugin settings.
  */
 function readysms_register_settings() {
-    // SMS Settings
+    // SMS Settings Group
     register_setting('readysms_sms_options_group', 'ready_sms_api_key', ['sanitize_callback' => 'sanitize_text_field', 'default' => '', 'type' => 'string']);
     register_setting('readysms_sms_options_group', 'ready_sms_number', ['sanitize_callback' => 'sanitize_text_field', 'default' => '', 'type' => 'string']);
     register_setting('readysms_sms_options_group', 'ready_sms_pattern_code', ['sanitize_callback' => 'sanitize_text_field', 'default' => '', 'type' => 'string']);
     register_setting('readysms_sms_options_group', 'ready_sms_otp_length', ['sanitize_callback' => 'readysms_sanitize_otp_length', 'default' => 6, 'type' => 'integer']);
     register_setting('readysms_sms_options_group', 'ready_sms_resend_timer', ['sanitize_callback' => 'readysms_sanitize_resend_timer', 'default' => 120, 'type' => 'integer']);
     register_setting('readysms_sms_options_group', 'ready_sms_country_code_mode', ['sanitize_callback' => 'sanitize_text_field', 'default' => 'iran_only', 'type' => 'string']);
-    register_setting('readysms_sms_options_group', 'ready_sms_send_method', ['sanitize_callback' => 'sanitize_text_field', 'default' => 'sms', 'type' => 'string']); // گزینه روش ارسال
+    register_setting('readysms_sms_options_group', 'ready_sms_send_method', ['sanitize_callback' => 'sanitize_text_field', 'default' => 'sms', 'type' => 'string']);
 
-    // Google Settings
+    // Google Settings Group
     register_setting('readysms_google_options_group', 'ready_google_client_id', ['sanitize_callback' => 'sanitize_text_field', 'default' => '', 'type' => 'string']);
     register_setting('readysms_google_options_group', 'ready_google_client_secret', ['sanitize_callback' => 'sanitize_text_field', 'default' => '', 'type' => 'string']);
 
-    // Form Settings
+    // Form Settings Group
     register_setting('readysms_form_options_group', 'ready_form_logo_url', ['sanitize_callback' => 'esc_url_raw', 'default' => '', 'type' => 'string']);
 
-    // Redirect Settings
+    // Redirect Settings Group
     register_setting('readysms_redirect_options_group', 'ready_redirect_after_login', ['sanitize_callback' => 'esc_url_raw', 'default' => '', 'type' => 'string']);
     register_setting('readysms_redirect_options_group', 'ready_redirect_after_register', ['sanitize_callback' => 'esc_url_raw', 'default' => '', 'type' => 'string']);
     register_setting('readysms_redirect_options_group', 'ready_redirect_after_logout', ['sanitize_callback' => 'esc_url_raw', 'default' => '', 'type' => 'string']);
     register_setting('readysms_redirect_options_group', 'ready_redirect_my_account_link', ['sanitize_callback' => 'esc_url_raw', 'default' => '', 'type' => 'string']);
+
+    // Tools Settings Group (for custom CSS/JS)
+    register_setting('readysms_tools_options_group', 'ready_custom_css', ['sanitize_callback' => 'wp_strip_all_tags', 'default' => '', 'type' => 'string']);
+    register_setting('readysms_tools_options_group', 'ready_custom_js', ['sanitize_callback' => null, 'default' => '', 'type' => 'string']);
 }
 add_action('admin_init', 'readysms_register_settings');
 
@@ -231,10 +242,19 @@ function readysms_render_admin_nav_tabs($current_page_slug = 'readysms-settings'
         'readysms-tools'             => __('ابزارها', 'readysms'),
     ];
     echo '<div class="dokme-container" style="margin:30px 0 20px;">';
-    foreach ($tabs as $slug => $title) {
-        $active_class = ($current_page_slug === $slug || ($slug === 'readysms-settings' && empty($current_page_slug) && $current_page_slug !== false )) ? 'active' : '';
-        if ($slug === 'readysms-settings' && ($current_page_slug === 'readysms-settings' || empty($current_page_slug))) $active_class = 'active';
+    // Ensure the main page slug is correctly identified if $_GET['page'] is empty
+    if (empty($current_page_slug) && strpos($_SERVER['REQUEST_URI'], 'page=readysms-settings') !== false) {
+        $current_page_slug = 'readysms-settings';
+    } elseif (empty($current_page_slug) && strpos($_SERVER['REQUEST_URI'], 'admin.php') !== false && strpos($_SERVER['REQUEST_URI'], 'page=') === false) {
+         // Heuristic for main admin page of the plugin if no page query is set (might occur for toplevel_page)
+        if(strpos($_SERVER['REQUEST_URI'], 'admin.php?page=readysms-settings') !== false || strpos($_SERVER['REQUEST_URI'], '/wp-admin/admin.php?page=readysms-settings') !==false ) {
+             $current_page_slug = 'readysms-settings';
+        }
+    }
 
+
+    foreach ($tabs as $slug => $title) {
+        $active_class = ($current_page_slug === $slug) ? 'active' : '';
         echo '<div class="dokme ' . esc_attr($active_class) . '"><a href="' . esc_url(admin_url('admin.php?page=' . $slug)) . '">' . esc_html($title) . '</a></div>';
     }
     echo '</div>';
@@ -350,7 +370,7 @@ function readysms_render_sms_settings_page() {
                         <p class="description"><?php esc_html_e('تعداد ارقام کد تایید که برای کاربر ارسال می‌شود (بین 4 تا 7 رقم).', 'readysms'); ?></p>
                     </td>
                 </tr>
-                <tr valign="top">
+                 <tr valign="top">
                     <th scope="row"><label for="ready_sms_send_method"><?php esc_html_e('روش ارسال کد تایید', 'readysms'); ?></label></th>
                     <td>
                         <select id="ready_sms_send_method" name="ready_sms_send_method" class="regular-text" style="max-width: 200px;">
@@ -360,7 +380,7 @@ function readysms_render_sms_settings_page() {
                         </select>
                         <p class="description">
                             <?php esc_html_e('روش ارسال کد تایید به کاربر را انتخاب کنید.', 'readysms'); ?><br>
-                            <?php esc_html_e('توجه: برای تماس صوتی، راه پیام از یک قالب صوتی ثابت (templateID: 2) استفاده می‌کند.', 'readysms'); ?>
+                            <?php esc_html_e('توجه: برای تماس صوتی، راه پیام از یک قالب صوتی ثابت (templateID: 2) استفاده می‌کند. برای شماره‌های غیرایرانی، روش ارسال به طور خودکار به پیامک تغییر خواهد کرد.', 'readysms'); ?>
                         </p>
                     </td>
                 </tr>
@@ -578,7 +598,44 @@ function readysms_render_tools_page() {
         </h1>
         <?php readysms_render_admin_nav_tabs(isset($_GET['page']) ? sanitize_text_field($_GET['page']) : ''); ?>
 
-        <div class="postbox">
+        <form method="post" action="options.php" id="readysms_tools_form">
+            <?php settings_fields('readysms_tools_options_group'); // گروه تنظیمات برای کدهای سفارشی ?>
+            
+            <div class="postbox">
+                <h2 class="hndle"><span><?php esc_html_e('کدهای سفارشی', 'readysms'); ?></span></h2>
+                <div class="inside">
+                    <p><?php esc_html_e('در این بخش می‌توانید کدهای CSS یا JavaScript سفارشی خود را برای تغییر ظاهر یا افزودن قابلیت‌های جزئی به فرم ورود اضافه کنید.', 'readysms'); ?></p>
+                    
+                    <table class="form-table">
+                        <tr valign="top">
+                            <th scope="row">
+                                <label for="ready_custom_css"><?php esc_html_e('CSS سفارشی', 'readysms'); ?></label>
+                            </th>
+                            <td>
+                                <textarea id="ready_custom_css" name="ready_custom_css" class="large-text ltr-code" dir="ltr" rows="10" placeholder="<?php esc_attr_e('مثال: .readysms-form-wrapper { border: 2px solid #00635D; }', 'readysms'); ?>"><?php echo esc_textarea(get_option('ready_custom_css')); ?></textarea>
+                                <p class="description">
+                                    <?php esc_html_e('کدهای CSS وارد شده در اینجا، در هدر سایت بارگذاری شده و می‌توانند برای تغییر استایل فرم ورود استفاده شوند.', 'readysms'); ?>
+                                    <?php esc_html_e('برای انتخاب صحیح المان‌ها، از کلاس‌ها و IDهای فرم ردی اس‌ام‌اس (مانند .readysms-form-wrapper، #readysms-phone-number و ...) استفاده کنید.', 'readysms'); ?>
+                                </p>
+                            </td>
+                        </tr>
+                        <tr valign="top">
+                            <th scope="row">
+                                <label for="ready_custom_js"><?php esc_html_e('JavaScript سفارشی', 'readysms'); ?></label>
+                            </th>
+                            <td>
+                                <textarea id="ready_custom_js" name="ready_custom_js" class="large-text ltr-code" dir="ltr" rows="10" placeholder="<?php esc_attr_e('مثال: console.log("ReadySMS Custom JS Loaded"); // کد شما باید داخل تگ <script> نباشد', 'readysms'); ?>"><?php echo esc_textarea(get_option('ready_custom_js')); ?></textarea>
+                                <p class="description">
+                                    <?php esc_html_e('کدهای JavaScript وارد شده در اینجا، در فوتر سایت (پس از بارگذاری اسکریپت اصلی افزونه) اجرا خواهند شد.', 'readysms'); ?>
+                                    <strong style="color: red;"><?php esc_html_e('احتیاط: وارد کردن کدهای نادرست یا مخرب JavaScript می‌تواند امنیت و عملکرد سایت شما را به خطر بیندازد. فقط در صورتی از این بخش استفاده کنید که دانش کافی دارید.', 'readysms'); ?></strong>
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                     <?php submit_button(__('ذخیره کدهای سفارشی', 'readysms')); ?>
+                </div>
+            </div>
+        </form> <div class="postbox">
             <h2 class="hndle"><span><?php esc_html_e('خروجی کاربران', 'readysms'); ?></span></h2>
             <div class="inside">
                 <p><?php esc_html_e('برای دریافت لیست کاربران سایت (شامل نام کاربری، ایمیل، نام نمایشی و تاریخ عضویت) با فرمت CSV، روی دکمه زیر کلیک کنید.', 'readysms'); ?></p>
@@ -619,7 +676,7 @@ function readysms_render_api_test_page() {
         </h1>
         <?php readysms_render_admin_nav_tabs(isset($_GET['page']) ? sanitize_text_field($_GET['page']) : ''); ?>
         <p><?php esc_html_e('در این بخش می‌توانید عملکرد APIهای مختلف سامانه راه پیام را با استفاده از تنظیمات ذخیره شده، آزمایش کنید.', 'readysms'); ?></p>
-        <p><?php printf(wp_kses_post(__('پیش از انجام تست، مطمئن شوید که <a href="%s">تنظیمات پیامک</a> (کلید API و کد پترن) را به درستی وارد و ذخیره کرده‌اید.', 'readysms')), esc_url(admin_url('admin.php?page=readysms-sms-settings'))); ?></p>
+        <p><?php printf(wp_kses_post(__('پیش از انجام تست، مطمئن شوید که <a href="%s">تنظیمات پیامک</a> (کلید API و کد پترن برای روش پیامک) را به درستی وارد و ذخیره کرده‌اید.', 'readysms')), esc_url(admin_url('admin.php?page=readysms-sms-settings'))); ?></p>
 
         <div class="postbox">
             <h2 class="hndle"><span><?php esc_html_e('1. تست ارسال و تایید OTP', 'readysms'); ?></span></h2>
@@ -646,23 +703,7 @@ function readysms_render_api_test_page() {
             </div>
         </div>
         <div class="postbox">
-            <h2 class="hndle"><span><?php esc_html_e('2. تست دریافت وضعیت پیامک', 'readysms'); ?></span></h2>
-            <div class="inside">
-                 <table class="form-table">
-                    <tr valign="top">
-                        <th scope="row"><label for="admin_status_reference_id"><?php esc_html_e('شناسه مرجع پیامک', 'readysms'); ?></label></th>
-                        <td>
-                            <input type="text" id="admin_status_reference_id" placeholder="<?php esc_attr_e('مثال: MSG-XXXXXXXX یا 174868256...', 'readysms'); ?>" class="regular-text ltr-code" dir="ltr">
-                            <p class="description"><?php esc_html_e('این شناسه (referenceID) پس از ارسال موفقیت‌آمیز پیامک توسط API راه پیام بازگردانده می‌شود.', 'readysms'); ?></p>
-                        </td>
-                    </tr>
-                </table>
-                <button type="button" id="admin_check_status_button" class="button button-secondary"><?php esc_html_e('بررسی وضعیت', 'readysms'); ?></button>
-                <div id="admin_status_result" class="api-test-result" style="margin-top: 15px; display:none;"></div>
-            </div>
-        </div>
-        <div class="postbox">
-            <h2 class="hndle"><span><?php esc_html_e('3. تست دریافت اطلاعات قالب پیام (مخصوص پیامک)', 'readysms'); ?></span></h2>
+            <h2 class="hndle"><span><?php esc_html_e('تست دریافت اطلاعات قالب پیام (مخصوص پیامک)', 'readysms'); ?></span></h2>
             <div class="inside">
                  <table class="form-table">
                     <tr valign="top">
