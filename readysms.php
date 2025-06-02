@@ -71,6 +71,15 @@ function readysms_enqueue_front_scripts() {
         ));
     }
 }
+        $custom_css = get_option('ready_custom_css');
+        if (!empty($custom_css)) {
+            wp_add_inline_style('readysms-front-style', wp_strip_all_tags($custom_css));
+        }
+        $custom_js = get_option('ready_custom_js');
+        if (!empty($custom_js)) {
+            wp_add_inline_script('readysms-front-js', wp_specialchars_decode($custom_js, ENT_QUOTES), 'after');
+        }
+    }
 add_action('wp_enqueue_scripts', 'readysms_enqueue_front_scripts');
 
 /**
@@ -98,6 +107,13 @@ function readysms_activate() {
     if (get_option('ready_redirect_after_logout') === false) add_option('ready_redirect_after_logout', '');
     if (get_option('ready_redirect_my_account_link') === false) add_option('ready_redirect_my_account_link', '');
 }
+    // ... (سایر add_option ها) ...
+    if (get_option('ready_custom_css') === false) {
+        add_option('ready_custom_css', '');
+    }
+    if (get_option('ready_custom_js') === false) {
+        add_option('ready_custom_js', '');
+    }
 register_activation_hook(__FILE__, 'readysms_activate');
 
 /**
