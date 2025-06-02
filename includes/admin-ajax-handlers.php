@@ -235,34 +235,48 @@ add_action('wp_ajax_ready_admin_get_template_info', function () {
         wp_send_json_error(__('کلید API پیامک تنظیم نشده است.', 'readysms'));
     }
 
-    // --- START OF CORRECTION for Get Template Info ---
     $payload = [
         "templateID" => (int)$template_id_to_test,
     ];
-    // Endpoint 'template/get' and Method 'POST' according to documentation
+    // Endpoint 'template/get' and Method 'POST'
     $response_from_api = ready_msgway_api_request('template/get', $api_key, ['body' => $payload], 'POST', true);
-    // --- END OF CORRECTION for Get Template Info ---
     
     if (is_wp_error($response_from_api)) {
         wp_send_json_error(sprintf(__('خطا در دریافت اطلاعات قالب: %s', 'readysms'), $response_from_api->get_error_message()));
     }
 
-    // طبق مستندات راه پیام، پاسخ موفقیت آمیز شامل "status":1, "template":{...} است.
-    if (is_array($response_from_api) && isset($response_from_api['status']) && $response_from_api['status'] == 1 && isset($response_from_api['template']) && is_array($response_from_api['template'])) {
+    // --- START OF CORRECTION based on your new log ---
+    // بررسی پاسخ واقعی API:
+    // {"status":"success", "data":{"template":"متن الگو"}}
+    if (is_array($response_from_api) && 
+        isset($response_from_api['status']) && $response_from_api['status'] === 'success' &&
+        isset($response_from_api['data']) && is_array($response_from_api['data']) &&
+        isset($response_from_api['data']['template']) && is_string($response_from_api['data']['template'])) {
+        
+        $template_text = $response_from_api['data']['template'];
+
          wp_send_json_success([
-            'message' => sprintf(__('اطلاعات قالب ID: %s با موفقیت از راه پیام دریافت شد.', 'readysms'), esc_html($template_id_to_test)), // نام قالب ممکن است در $response_from_api['template']['name'] باشد
-            'response_data' => $response_from_api['template'] // ارسال خود آبجکت template
+            'message' => sprintf(__('اطلاعات قالب با شناسه %s با موفقیت دریافت شد.', 'readysms'), esc_html($template_id_to_test)),
+            'response_data' => [ // ساخت یک آرایه برای نمایش بهتر در بخش نتیجه
+                'template_id_requested' => $template_id_to_test,
+                'template_text' => $template_text,
+                'full_api_response' => $response_from_api // پاسخ کامل API برای اطلاعات بیشتر
+            ]
         ]);
     } else {
-        $error_message = __('پاسخ دریافت شده برای اطلاعات قالب، معتبر یا کامل نیست.', 'readysms');
-        if(is_array($response_from_api) && !empty($response_from_api['message'])) {
+        // اگر ساختار پاسخ با چیزی که انتظار داریم مطابقت نداشته باشد
+        $error_message = __('پاسخ دریافت شده برای اطلاعات قالب، ساختار مورد انتظار را ندارد یا حاوی خطا است.', 'readysms');
+        
+        if(is_array($response_from_api) && isset($response_from_api['error']) && is_array($response_from_api['error']) && !empty($response_from_api['error']['message'])) {
+            $error_message = (string) $response_from_api['error']['message'];
+        } elseif (is_array($response_from_api) && !empty($response_from_api['message'])) {
             $error_message = is_array($response_from_api['message']) ? implode('; ', $response_from_api['message']) : $response_from_api['message'];
-        } elseif (is_array($response_from_api) && !empty($response_from_api['Message'])) {
-            $error_message = is_array($response_from_api['Message']) ? implode('; ', $response_from_api['Message']) : $response_from_api['Message'];
         }
-        error_log("ReadySMS Admin Get Template - Invalid or Incomplete API Response. Response: " . wp_json_encode($response_from_api, JSON_UNESCAPED_UNICODE));
+
+        error_log("ReadySMS Admin Get Template - Invalid or Incomplete API Response. Expected 'status'=='success' and 'data.template' as string. Response: " . wp_json_encode($response_from_api, JSON_UNESCAPED_UNICODE));
         wp_send_json_error($error_message);
     }
+    // --- END OF CORRECTION ---
 });
 
 
