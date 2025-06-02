@@ -111,6 +111,18 @@ add_action('wp_ajax_ready_admin_send_test_otp', function () {
     $template_id = get_option('ready_sms_pattern_code');
     $line_number = get_option('ready_sms_number');
 
+        // --- START DEBUG LOGGING ---
+    error_log("ReadySMS Debug (Admin Test Send OTP):");
+    error_log(" - Send Method Retrieved: " . $send_method);
+    error_log(" - SMS Template ID Retrieved (ready_sms_pattern_code): '" . $sms_template_id . "'");
+    error_log(" - Is SMS Template ID empty? : " . (empty($sms_template_id) ? 'YES' : 'NO'));
+    // --- END DEBUG LOGGING ---
+
+    if ($send_method === 'sms' && empty($sms_template_id)) {
+        wp_send_json_error(__('کد پترن پیامک در تنظیمات مشخص نشده است (برای ارسال تست SMS لازم است).', 'readysms'));
+        return;
+    }
+
     if (empty($api_key) || empty($template_id)) {
         wp_send_json_error(__('کلید API یا کد پترن پیامک تنظیم نشده است.', 'readysms'));
     }
